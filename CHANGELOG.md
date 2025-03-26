@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.41]
+- @zelenkovsky [#69](https://github.com/dnakov/anon-kode/pull/69) and [#70](https://github.com/dnakov/anon-kode/pull/70)
+
 ## [v0.0.40]
 - @jeanrobatto settings for optional api keys for like ollama
 
