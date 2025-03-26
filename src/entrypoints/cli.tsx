@@ -1032,63 +1032,46 @@ ${commandList}`,
 
             return (
               <Box flexDirection="column" padding={1}>
-                {!isFinished ? (
-                  <Box
-                    flexDirection="column"
-                    borderStyle="round"
-                    borderColor={theme.claude}
-                    padding={1}
-                    width={"100%"}
-                  >
-                    <Text bold color={theme.claude}>
-                      Import MCP Servers from Claude Desktop
-                    </Text>
+                <Box
+                  flexDirection="column"
+                  borderStyle="round"
+                  borderColor={theme.claude}
+                  padding={1}
+                  width={"100%"}
+                >
+                  <Text bold color={theme.claude}>
+                    Import MCP Servers from Claude Desktop
+                  </Text>
 
-                    <Box marginY={1}>
-                      <Text>
-                        Found {numServers} MCP servers in Claude Desktop.
-                      </Text>
-                    </Box>
-
-                    <Text>Please select the servers you want to import:</Text>
-
-                    <Box marginTop={1}>
-                      <MultiSelect
-                        options={serverNames.map(name => ({
-                          label: name,
-                          value: name,
-                        }))}
-                        defaultValue={serverNames}
-                        onSubmit={handleConfirm}
-                      />
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box
-                    flexDirection="column"
-                    borderStyle="round"
-                    borderColor={theme.success}
-                    padding={1}
-                  >
-                    <Text bold color={theme.success}>Import Complete</Text>
-
-                    <Box marginY={1} flexDirection="column">
-                      {importResults.map((result, index) => (
-                        <Text key={index} color={result.success ? theme.success : theme.error}>
-                          {result.success ? '✓' : '✗'} {result.name}
-                        </Text>
-                      ))}
-                    </Box>
-
+                  <Box marginY={1}>
                     <Text>
-                      Imported {importResults.filter(r => r.success).length} of {importResults.length} selected MCP servers to {scope} config
+                      Found {numServers} MCP servers in Claude Desktop.
                     </Text>
                   </Box>
-                )}
 
-                {!isFinished && (
-                  <Box marginTop={0} marginLeft={3}>
-                    <Text dimColor>Space to select · Enter to confirm · Esc to cancel</Text>
+                  <Text>Please select the servers you want to import:</Text>
+
+                  <Box marginTop={1}>
+                    <MultiSelect
+                      options={serverNames.map(name => ({
+                        label: name,
+                        value: name,
+                      }))}
+                      defaultValue={serverNames}
+                      onSubmit={handleConfirm}
+                    />
+                  </Box>
+                </Box>
+
+                <Box marginTop={0} marginLeft={3}>
+                  <Text dimColor>Space to select · Enter to confirm · Esc to cancel</Text>
+                </Box>
+
+                {isFinished && (
+                  <Box marginTop={1}>
+                    <Text color={theme.success}>
+                      Successfully imported {importResults.filter(r => r.success).length} MCP server to local config.
+                    </Text>
                   </Box>
                 )}
               </Box>
