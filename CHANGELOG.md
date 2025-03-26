@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.42]
+- handle google 429s that come in as 200.
+
 ## [v0.0.41]
 - @zelenkovsky [#69](https://github.com/dnakov/anon-kode/pull/69) and [#70](https://github.com/dnakov/anon-kode/pull/70)
 
