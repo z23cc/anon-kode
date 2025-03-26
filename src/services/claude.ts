@@ -398,7 +398,19 @@ async function handleMessageStream(
 
 function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   let contentBlocks: ContentBlock[] = []
-  const message = response.choices[0].message
+  const message = response.choices?.[0]?.message
+  if(!message) {
+    logEvent('weird_response', {
+      response: JSON.stringify(response),
+    })
+    return {
+      role: 'assistant',
+      content: [],
+      stop_reason: response.choices?.[0]?.finish_reason,
+      type: 'message',
+      usage: response.usage,
+    }
+  }
   if(message?.tool_calls) {
     for(const toolCall of message.tool_calls) {
       const tool = toolCall.function
@@ -449,7 +461,7 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   const finalMessage = {
     role: 'assistant',
     content: contentBlocks,
-    stop_reason: response.choices[0].finish_reason,
+    stop_reason: response.choices?.[0]?.finish_reason,
     type: 'message',
     usage: response.usage,
   }

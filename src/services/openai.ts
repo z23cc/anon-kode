@@ -49,10 +49,11 @@ const handleRateLimit: RateLimitHandler = async (opts, response, type, config, a
   const retryAfter = response?.headers.get('retry-after');
   const delay = retryAfter && !isNaN(parseInt(retryAfter)) ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
   logEvent('rate_limited', {
-    delay,
-    attempt,
-    maxAttempts
+    delay: String(delay),
+    attempt: String(attempt),
+    maxAttempts: String(maxAttempts)
   })
+  setSessionState('currentError', `(${attempt} / ${maxAttempts}) Rate limited. Retrying in ${delay / 1000} seconds...`)
   await new Promise(resolve => setTimeout(resolve, delay));
   return getCompletion(type, opts, attempt + 1, maxAttempts);
 };
@@ -153,7 +154,7 @@ const ERROR_HANDLERS: ErrorHandler[] = [
 function isRateLimitError(errMsg: string): boolean {
   if (!errMsg) return false;
   const lowerMsg = errMsg.toLowerCase();
-  return lowerMsg.includes('rate limit') || lowerMsg.includes('too many requests');
+  return lowerMsg.includes('rate limit') || lowerMsg.includes('too many requests') || lowerMsg.includes('429');
 }
 
 async function applyModelErrorFixes(opts: OpenAI.ChatCompletionCreateParams, baseURL: string) {
@@ -179,7 +180,6 @@ async function handleApiError(
     if (typeof errMsg !== 'string') {
       errMsg = JSON.stringify(errMsg);
     }
-
     // Check for rate limiting first
     if (isRateLimitError(errMsg)) {
       logEvent('rate_limit_error', {
@@ -198,6 +198,7 @@ async function handleApiError(
           error: handler.type,
           error_message: errMsg
         })
+        setSessionState('currentError', `(${attempt} / ${maxAttempts}) Error: ${handler.type}. Retrying...`)
         setModelError(baseURL, opts.model, handler.type, errMsg);
         return getCompletion(type, opts, attempt + 1, maxAttempts);
       }
@@ -228,13 +229,13 @@ export async function getCompletion(
   const baseURL = type === 'large' ? config.largeModelBaseURL : config.smallModelBaseURL
   const proxy = config.proxy ? new ProxyAgent(config.proxy) : undefined
   logEvent('get_completion', {
-    messages: opts.messages.map(m => ({
+    messages: JSON.stringify(opts.messages.map(m => ({
       role: m.role,
-      content: typeof m.content === 'string' ? m.content.slice(0, 100) : m.content?.map(c => ({
+      content: typeof m.content === 'string' ? m.content.slice(0, 100) : (m.content ? JSON.stringify(m.content?.map(c => ({
         type: c.type,
-        text: c.text.slice(0, 100)
-      }))
-    }))
+        text: c.text?.slice(0, 100)
+      }))) : '')
+    })))
   })
   opts = structuredClone(opts)
 
@@ -252,6 +253,29 @@ export async function getCompletion(
       }
       return msg;
     });
+  }
+
+  const handleResponse = async (response: Response) => {
+    try {
+      let responseData: any
+      if(response.ok) {
+        responseData = await response.json() as any
+        if(responseData?.response?.includes('429')) {
+          return handleRateLimit(opts, response, type, config, attempt, maxAttempts)
+        }
+        return responseData
+      } else {
+        const error = await response.json() as { error?: { message: string }, message?: string }
+        return handleApiError(response, error, type, opts, config, attempt, maxAttempts)
+      }
+    } catch (jsonError) {
+      // If we can't parse the error as JSON, use the status text
+      return handleApiError(
+        response, 
+        { error: { message: `HTTP error ${response.status}: ${response.statusText}` }}, 
+        type, opts, config, attempt, maxAttempts
+      )
+    }
   }
 
   try {
@@ -280,7 +304,56 @@ export async function getCompletion(
         }
       }
       
-      return createStreamProcessor(response.body as any)
+      // Create a stream that checks for errors while still yielding chunks
+      const stream = createStreamProcessor(response.body as any)
+      return (async function* errorAwareStream() {
+        let hasReportedError = false
+        
+        try {
+          for await (const chunk of stream) {
+            // Safely check for errors
+            if (chunk && typeof chunk === 'object') {
+              const chunkObj = chunk as any
+              if (chunkObj.error) {
+                if (!hasReportedError) {
+                  hasReportedError = true
+                  const errorValue = chunkObj.error
+                  
+                  // Log error
+                  logEvent('stream_error', {
+                    error: typeof errorValue === 'string' ? errorValue : JSON.stringify(errorValue)
+                  })
+                  
+                  // Handle the error - this will return a new completion or stream
+                  const errorResult = await handleApiError(response, errorValue, type, opts, config, attempt, maxAttempts)
+                  
+                  // If it's a stream, yield from it and return
+                  if (Symbol.asyncIterator in errorResult) {
+                    for await (const errorChunk of errorResult as AsyncIterable<OpenAI.ChatCompletionChunk>) {
+                      yield errorChunk
+                    }
+                    return // End this generator after yielding all chunks from error result
+                  } else {
+                    // It's a regular completion, not a stream - we can't really use this in a streaming context
+                    // Just log it and continue with the original stream (skipping error chunks)
+                    console.warn('Error handler returned non-stream completion, continuing with original stream')
+                  }
+                }
+                
+                // Skip yielding this error chunk
+                continue
+              }
+            }
+            
+            // Only yield good chunks
+            yield chunk
+          }
+        } catch (e) {
+          console.error('Error in stream processing:', e.message)
+          // Rethrow to maintain error propagation
+          throw e
+        }
+      })()
     }
     
     const response = await fetch(`${baseURL}/chat/completions`, {
@@ -293,6 +366,12 @@ export async function getCompletion(
       dispatcher: proxy,
     })
 
+    logEvent('response.ok', {
+      ok: String(response.ok),
+      status: String(response.status),
+      statusText: response.statusText,
+    })
+    
     if (!response.ok) {
       try {
         const error = await response.json() as { error?: { message: string }, message?: string }
@@ -307,7 +386,23 @@ export async function getCompletion(
       }
     }
 
-    return response.json() as Promise<OpenAI.ChatCompletion>
+    // Get the raw response data and check for errors even in OK responses
+    const responseData = await response.json() as OpenAI.ChatCompletion
+    
+    // Check for error property in the successful response
+    if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+      const errorValue = (responseData as any).error
+      
+      // Log the error
+      logEvent('completion_error', {
+        error: typeof errorValue === 'string' ? errorValue : JSON.stringify(errorValue)
+      })
+      
+      // Handle the error
+      return handleApiError(response, { error: errorValue }, type, opts, config, attempt, maxAttempts)
+    }
+    
+    return responseData
   } catch (error) {
     // Handle network errors or other exceptions
     if (attempt < maxAttempts - 1) {
@@ -316,7 +411,7 @@ export async function getCompletion(
       return getCompletion(type, opts, attempt + 1, maxAttempts)
     }
     throw new Error(`Network error: ${error.message || 'Unknown error'}`)
-  }
+  } 
 }
 
 export function createStreamProcessor(
@@ -353,7 +448,7 @@ export function createStreamProcessor(
         while (lineEnd !== -1) {
           const line = buffer.substring(0, lineEnd).trim()
           buffer = buffer.substring(lineEnd + 1)
-          
+
           if (line === 'data: [DONE]') {
             continue
           }
