@@ -1,7 +1,7 @@
 lockfileVersion: '9.0'
 
 settings:
-  autoInstallPeers: true
+  autoInstallPeers: false
   excludeLinksFromLockfile: false
 
 importers:
@@ -125,6 +125,13 @@ importers:
       zod-to-json-schema:
         specifier: ^3.24.3
         version: 3.24.3(zod@3.24.2)
+    devDependencies:
+      react-devtools-core:
+        specifier: ^6.1.1
+        version: 6.1.1
+      tsx:
+        specifier: ^4.19.3
+        version: 4.19.3
     optionalDependencies:
       '@img/sharp-darwin-arm64':
         specifier: ^0.33.5
@@ -138,13 +145,6 @@ importers:
       '@img/sharp-win32-x64':
         specifier: ^0.33.5
         version: 0.33.5
-    devDependencies:
-      react-devtools-core:
-        specifier: ^6.1.1
-        version: 6.1.1
-      tsx:
-        specifier: ^4.19.3
-        version: 4.19.3
 
 packages:
 
