@@ -1,6 +1,6 @@
 {
   "name": "anon-kode",
-  "version": "0.0.42",
+  "version": "0.0.43",
   "bin": {
     "kode": "cli.mjs"
   },
