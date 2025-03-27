@@ -252,13 +252,13 @@ async function setup(
       last_session_id: projectConfig.lastSessionId,
     })
     // Clear the values after logging
-    saveCurrentProjectConfig({
-      ...projectConfig,
-      lastCost: undefined,
-      lastAPIDuration: undefined,
-      lastDuration: undefined,
-      lastSessionId: undefined,
-    })
+    // saveCurrentProjectConfig({
+    //   ...projectConfig,
+    //   lastCost: undefined,
+    //   lastAPIDuration: undefined,
+    //   lastDuration: undefined,
+    //   lastSessionId: undefined,
+    // })
   }
 
   // Check auto-updater permissions
@@ -389,7 +389,7 @@ ${commandList}`,
           ),
           getClients(),
         ])
-        logStartup()
+        // logStartup()
         const inputPrompt = [prompt, stdinContent].filter(Boolean).join('\n')
         if (print) {
           if (!inputPrompt) {
@@ -1266,7 +1266,7 @@ ${commandList}`,
             loadLogList(CACHE_PATHS.messages()),
             getClients(),
           ])
-          logStartup()
+          // logStartup()
 
           // If a specific conversation is requested, load and resume it directly
           if (identifier !== undefined) {

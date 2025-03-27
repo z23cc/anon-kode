@@ -359,19 +359,14 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     // Update the primary provider regardless of which model we're changing
     newConfig.primaryProvider = provider
     
-    
     // Update the appropriate model based on the selection
     if (modelTypeToChange === 'both' || modelTypeToChange === 'large') {
-      if (newConfig.largeModelName) {
-        newConfig.largeModelName = model
-      }
-      if (newConfig.largeModelBaseURL) {
-        newConfig.largeModelBaseURL = baseURL
-      }
+      newConfig.largeModelName = model
+      newConfig.largeModelBaseURL = baseURL
       if (apiKey) {
         newConfig.largeModelApiKeys = [apiKey]
       }
-      if (newConfig.largeModelMaxTokens) {
+      if (maxTokens) {
         newConfig.largeModelMaxTokens = parseInt(maxTokens)
       }
       if (reasoningEffort) {
@@ -379,19 +374,20 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       } else {
         newConfig.largeModelReasoningEffort = undefined
       }
+      if(apiKey) {
+        newConfig.largeModelApiKeyRequired = true
+      } else {
+        newConfig.largeModelApiKeyRequired = false
+      }
     }
     
     if (modelTypeToChange === 'both' || modelTypeToChange === 'small') {
-      if (newConfig.smallModelName) {
-        newConfig.smallModelName = model
-      }
-      if (newConfig.smallModelBaseURL) {
-        newConfig.smallModelBaseURL = baseURL
-      }
+      newConfig.smallModelName = model
+      newConfig.smallModelBaseURL = baseURL
       if (apiKey) {
         newConfig.smallModelApiKeys = [apiKey]
       }
-      if (newConfig.smallModelMaxTokens) {
+      if (maxTokens) {
         newConfig.smallModelMaxTokens = parseInt(maxTokens)
       }
       if (reasoningEffort) {
@@ -399,10 +395,14 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       } else {
         newConfig.smallModelReasoningEffort = undefined
       }
+      if(apiKey) {
+        newConfig.smallModelApiKeyRequired = true
+      } else {
+        newConfig.smallModelApiKeyRequired = false
+      }
     }
     
     // Save the updated configuration
-    console.log(newConfig)
     saveGlobalConfig(newConfig)
   }
   

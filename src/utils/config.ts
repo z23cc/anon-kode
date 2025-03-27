@@ -127,11 +127,13 @@ export type GlobalConfig = {
   largeModelName?: string
   largeModelApiKeyRequired?: boolean 
   largeModelApiKeys?: string[]
+  largeModelApiKey?: string // Deprecated
   largeModelReasoningEffort?: 'low' | 'medium' | 'high' | undefined
   smallModelBaseURL?: string
   smallModelName?: string
   smallModelApiKeyRequired?: boolean 
   smallModelApiKeys?: string[]
+  smallModelApiKey?: string // Deprecated
   smallModelReasoningEffort?: 'low' | 'medium' | 'high' | undefined
   smallModelMaxTokens?: number
   largeModelMaxTokens?: number
@@ -222,6 +224,16 @@ export function isProjectConfigKey(key: string): key is ProjectConfigKey {
 }
 
 export function saveGlobalConfig(config: GlobalConfig): void {
+
+  if(config.largeModelApiKey && !config.largeModelApiKeys) {
+    config.largeModelApiKeys = [config.largeModelApiKey]
+    delete config.largeModelApiKey
+  }
+  if(config.smallModelApiKey && !config.smallModelApiKeys) {
+    config.smallModelApiKeys = [config.smallModelApiKey]
+    delete config.smallModelApiKey
+  }
+
   if (process.env.NODE_ENV === 'test') {
     for (const key in config) {
       TEST_GLOBAL_CONFIG_FOR_TESTING[key] = config[key]
@@ -665,7 +677,6 @@ export function getActiveApiKey(config: GlobalConfig, type: 'small' | 'large', r
 
   // Get the current index from session state or start at 0
   const currentIndex = getSessionState('currentApiKeyIndex')[type]
-  console.log('currentIndex', currentIndex)
   if(!roundRobin) {
     return keyArray[currentIndex]
   }

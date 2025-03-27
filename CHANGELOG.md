@@ -1,6 +1,12 @@
 # Changelog
 
-## [v0.0.44]
+## [v0.0.45]
+- make apiKeys be an array and use them round robin [#75](https://github.com/dnakov/anon-kode/issues/75)
+- fix config corruption
+- remove the unnecessary logStartup calls
+- remove the unnecessary LLM calls on start up just for the placeholder commands  
+
+## [v0.0.44] (unpublished)
 - make apiKeys be an array and use them round robin [#75](https://github.com/dnakov/anon-kode/issues/75)
 
 ## [v0.0.43]
