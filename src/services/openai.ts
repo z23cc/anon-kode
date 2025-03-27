@@ -1,5 +1,5 @@
 import { OpenAI } from "openai";
-import { getGlobalConfig, GlobalConfig } from "../utils/config";
+import { getGlobalConfig, GlobalConfig, getActiveApiKey, markApiKeyAsFailed, getApiKeys } from "../utils/config";
 import { ProxyAgent, fetch, Response } from 'undici'
 import { setSessionState, getSessionState } from "../utils/sessionState";
 import { logEvent } from "../services/statsig";
@@ -180,7 +180,26 @@ async function handleApiError(
     if (typeof errMsg !== 'string') {
       errMsg = JSON.stringify(errMsg);
     }
-    // Check for rate limiting first
+
+    // Check for authentication errors in both message and status code
+    const isAuthError = 
+      response.status === 401 || // Unauthorized
+      response.status === 403 || // Forbidden
+      errMsg.toLowerCase().includes('authentication_error') ||
+      errMsg.toLowerCase().includes('invalid api key') ||
+      errMsg.toLowerCase().includes('unauthorized') ||
+      errMsg.toLowerCase().includes('forbidden');
+
+    if (isAuthError) {
+      const apiKey = getActiveApiKey(config, type, false)
+      if (apiKey) {
+        markApiKeyAsFailed(apiKey, type)
+        // Try with next key
+        return getCompletion(type, opts, attempt + 1, maxAttempts)
+      }
+    }
+
+    // Check for rate limiting
     if (isRateLimitError(errMsg)) {
       logEvent('rate_limit_error', {
         error_message: errMsg
@@ -221,13 +240,24 @@ export async function getCompletion(
   attempt: number = 0,
   maxAttempts: number = 5
 ): Promise<OpenAI.ChatCompletion | AsyncIterable<OpenAI.ChatCompletionChunk>> {
-  if (attempt >= maxAttempts) {
-    throw new Error('Max attempts reached')
-  }
   const config = getGlobalConfig()
-  const apiKey = type === 'large' ? config.largeModelApiKey : config.smallModelApiKey
+  const failedKeys = getSessionState('failedApiKeys')[type]
+  const availableKeys = getApiKeys(config, type)
+  const allKeysFailed = failedKeys.length === availableKeys.length && availableKeys.length > 0
+
+  if (attempt >= maxAttempts || allKeysFailed) {
+    throw new Error('Max attempts reached or all API keys failed')
+  }
+
+  const apiKey = getActiveApiKey(config, type)
+  if (!apiKey || apiKey.trim() === '') {
+    return getCompletion(type, opts, attempt + 1, maxAttempts)
+  }
+
+  const apiKeyRequired = type === 'large' ? config.largeModelApiKeyRequired : config.smallModelApiKeyRequired
   const baseURL = type === 'large' ? config.largeModelBaseURL : config.smallModelBaseURL
   const proxy = config.proxy ? new ProxyAgent(config.proxy) : undefined
+
   logEvent('get_completion', {
     messages: JSON.stringify(opts.messages.map(m => ({
       role: m.role,
@@ -262,6 +292,14 @@ export async function getCompletion(
         responseData = await response.json() as any
         if(responseData?.response?.includes('429')) {
           return handleRateLimit(opts, response, type, config, attempt, maxAttempts)
+        }
+        // Only reset failed keys if this key was previously marked as failed
+        const failedKeys = getSessionState('failedApiKeys')[type]
+        if (apiKey && failedKeys.includes(apiKey)) {
+          setSessionState('failedApiKeys', {
+            ...getSessionState('failedApiKeys'),
+            [type]: failedKeys.filter(k => k !== apiKey)
+          })
         }
         return responseData
       } else {
@@ -302,6 +340,15 @@ export async function getCompletion(
             type, opts, config, attempt, maxAttempts
           )
         }
+      }
+      
+      // Only reset failed keys if this key was previously marked as failed
+      const failedKeys = getSessionState('failedApiKeys')[type]
+      if (apiKey && failedKeys.includes(apiKey)) {
+        setSessionState('failedApiKeys', {
+          ...getSessionState('failedApiKeys'),
+          [type]: failedKeys.filter(k => k !== apiKey)
+        })
       }
       
       // Create a stream that checks for errors while still yielding chunks
@@ -400,6 +447,15 @@ export async function getCompletion(
       
       // Handle the error
       return handleApiError(response, { error: errorValue }, type, opts, config, attempt, maxAttempts)
+    }
+    
+    // Only reset failed keys if this key was previously marked as failed
+    const failedKeys = getSessionState('failedApiKeys')[type]
+    if (apiKey && failedKeys.includes(apiKey)) {
+      setSessionState('failedApiKeys', {
+        ...getSessionState('failedApiKeys'),
+        [type]: failedKeys.filter(k => k !== apiKey)
+      })
     }
     
     return responseData

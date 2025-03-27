@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.44]
+- make apiKeys be an array and use them round robin [#75](https://github.com/dnakov/anon-kode/issues/75)
+
 ## [v0.0.43]
 - @monotykamary [#72](https://github.com/dnakov/anon-kode/pull/72) and [#73](https://github.com/dnakov/anon-kode/pull/73)
 

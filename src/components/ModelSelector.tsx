@@ -8,6 +8,7 @@ import { useExitOnCtrlCD } from '../hooks/useExitOnCtrlCD'
 import {
   getGlobalConfig,
   saveGlobalConfig,
+  addApiKey,
   ProviderType,
 } from '../utils/config.js'
 import models, { providers } from '../constants/models'
@@ -361,13 +362,19 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     
     // Update the appropriate model based on the selection
     if (modelTypeToChange === 'both' || modelTypeToChange === 'large') {
-      newConfig.largeModelName = model
-      newConfig.largeModelBaseURL = baseURL
-      newConfig.largeModelApiKey = apiKey || config.largeModelApiKey
-      newConfig.largeModelMaxTokens = parseInt(maxTokens)
-      
-      // Save reasoning effort for large model if supported
-      if (supportsReasoningEffort) {
+      if (newConfig.largeModelName) {
+        newConfig.largeModelName = model
+      }
+      if (newConfig.largeModelBaseURL) {
+        newConfig.largeModelBaseURL = baseURL
+      }
+      if (apiKey) {
+        newConfig.largeModelApiKeys = [apiKey]
+      }
+      if (newConfig.largeModelMaxTokens) {
+        newConfig.largeModelMaxTokens = parseInt(maxTokens)
+      }
+      if (reasoningEffort) {
         newConfig.largeModelReasoningEffort = reasoningEffort
       } else {
         newConfig.largeModelReasoningEffort = undefined
@@ -375,21 +382,24 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     }
     
     if (modelTypeToChange === 'both' || modelTypeToChange === 'small') {
-      newConfig.smallModelName = model
-      newConfig.smallModelBaseURL = baseURL
-      newConfig.smallModelApiKey = apiKey || config.smallModelApiKey
-      newConfig.smallModelMaxTokens = parseInt(maxTokens)
-      // Save reasoning effort for small model if supported
-      if (supportsReasoningEffort) {
+      if (newConfig.smallModelName) {
+        newConfig.smallModelName = model
+      }
+      if (newConfig.smallModelBaseURL) {
+        newConfig.smallModelBaseURL = baseURL
+      }
+      if (apiKey) {
+        newConfig.smallModelApiKeys = [apiKey]
+      }
+      if (newConfig.smallModelMaxTokens) {
+        newConfig.smallModelMaxTokens = parseInt(maxTokens)
+      }
+      if (reasoningEffort) {
         newConfig.smallModelReasoningEffort = reasoningEffort
       } else {
         newConfig.smallModelReasoningEffort = undefined
       }
     }
-
-    // If an API Key was provided, set key required to true
-    if (newConfig.largeModelApiKey) newConfig.largeModelApiKeyRequired = true;
-    if (newConfig.smallModelApiKey) newConfig.smallModelApiKeyRequired = true;
     
     // Save the updated configuration
     console.log(newConfig)
