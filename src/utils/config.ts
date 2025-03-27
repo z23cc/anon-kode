@@ -669,6 +669,9 @@ let currentKeyIndex = 0
 
 export function getActiveApiKey(config: GlobalConfig, type: 'small' | 'large', roundRobin: boolean = true): string | undefined {
   let keyArray = type === 'small' ? config.smallModelApiKeys : config.largeModelApiKeys
+  if(!keyArray) {
+    keyArray = []
+  }
   const failedKeys = getSessionState('failedApiKeys')[type]
   keyArray = keyArray.filter(key => !failedKeys.includes(key)).filter(key => key && key !== '')
   if (!keyArray || keyArray.length === 0) {

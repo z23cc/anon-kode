@@ -220,7 +220,7 @@ async function setup(
   }
 
   cleanupOldMessageFilesInBackground()
-  getExampleCommands() // Pre-fetch example commands
+  // getExampleCommands() // Pre-fetch example commands
   getContext() // Pre-fetch all context data at once
   // initializeStatsig() // Kick off statsig initialization
 

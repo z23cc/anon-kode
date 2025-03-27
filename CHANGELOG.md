@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.46]
+- null check for no api keys required
+
 ## [v0.0.45]
 - make apiKeys be an array and use them round robin [#75](https://github.com/dnakov/anon-kode/issues/75)
 - fix config corruption
