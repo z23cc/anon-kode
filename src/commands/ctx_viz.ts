@@ -158,7 +158,7 @@ function createSummaryTable(
 const command: Command = {
   name: 'ctx-viz',
   description:
-    '[ANT-ONLY] Show token usage breakdown for the current conversation context',
+    'Show token usage breakdown for the current conversation context',
   isEnabled: true,
   isHidden: false,
   type: 'local',

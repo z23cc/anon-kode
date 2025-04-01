@@ -560,31 +560,29 @@ ${commandList}`,
       }
     })
 
-  if (process.env.USER_TYPE === 'ant') {
-    mcp
-      .command('add-sse <name> <url>')
-      .description('Add an SSE server')
-      .option(
-        '-s, --scope <scope>',
-        'Configuration scope (project or global)',
-        'project',
-      )
-      .action(async (name, url, options) => {
-        try {
-          const scope = ensureConfigScope(options.scope)
-          logEvent('tengu_mcp_add', { name, type: 'sse', scope })
+  mcp
+    .command('add-sse <name> <url>')
+    .description('Add an SSE server')
+    .option(
+      '-s, --scope <scope>',
+      'Configuration scope (project or global)',
+      'project',
+    )
+    .action(async (name, url, options) => {
+      try {
+        const scope = ensureConfigScope(options.scope)
+        logEvent('tengu_mcp_add', { name, type: 'sse', scope })
 
-          addMcpServer(name, { type: 'sse', url }, scope)
-          console.log(
-            `Added SSE MCP server ${name} with URL ${url} to ${scope} config`,
-          )
-          process.exit(0)
-        } catch (error) {
-          console.error((error as Error).message)
-          process.exit(1)
-        }
-      })
-  }
+        addMcpServer(name, { type: 'sse', url }, scope)
+        console.log(
+          `Added SSE MCP server ${name} with URL ${url} to ${scope} config`,
+        )
+        process.exit(0)
+      } catch (error) {
+        console.error((error as Error).message)
+        process.exit(1)
+      }
+    })
 
   mcp
     .command('add [name] [commandOrUrl] [args...]')
@@ -1148,7 +1146,7 @@ ${commandList}`,
     })
 
   // ant-only commands
-  if (process.env.USER_TYPE === 'ant') {
+
     // claude update
     program
       .command('update')
@@ -1426,7 +1424,7 @@ ${commandList}`,
         console.log(`Removed context.${key}`)
         process.exit(0)
       })
-  }
+
 
   await program.parseAsync(process.argv)
   return program

@@ -7,7 +7,7 @@ import { CACHE_PATHS, loadLogList } from '../utils/log'
 export default {
   type: 'local-jsx',
   name: 'resume',
-  description: '[ANT-ONLY] Resume a previous conversation',
+  description: 'Resume a previous conversation',
   isEnabled: true,
   isHidden: false,
   userFacingName() {

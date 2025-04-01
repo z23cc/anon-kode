@@ -93,7 +93,7 @@ When the user asks you to create a new git commit, follow these steps carefully:
 </commit_analysis>
 
 4. Create the commit with a message ending with:
-🤖 Generated with ${process.env.USER_TYPE === 'ant' ? `[${PRODUCT_NAME}](${PRODUCT_URL})` : PRODUCT_NAME}
+🤖 Generated with ${PRODUCT_NAME}
 Co-Authored-By: ${PRODUCT_NAME} <noreply@${PRODUCT_NAME}.com>
 
 - In order to ensure good formatting, ALWAYS pass the commit message via a HEREDOC, a la this example:
@@ -101,7 +101,7 @@ Co-Authored-By: ${PRODUCT_NAME} <noreply@${PRODUCT_NAME}.com>
 git commit -m "$(cat <<'EOF'
    Commit message here.
 
-   🤖 Generated with ${process.env.USER_TYPE === 'ant' ? `[${PRODUCT_NAME}](${PRODUCT_URL})` : PRODUCT_NAME}
+   🤖 Generated with ${PRODUCT_NAME}
    Co-Authored-By: ${PRODUCT_NAME} <noreply@${PRODUCT_NAME}.com>
    EOF
    )"

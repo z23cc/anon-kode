@@ -17,15 +17,7 @@ export const getGitEmail = memoize(async (): Promise<string | undefined> => {
 export const getUser = memoize(async (): Promise<StatsigUser> => {
   const userID = getOrCreateUserID()
   const config = getGlobalConfig()
-  const email =
-    process.env.USER_TYPE === 'ant'
-      ? (config.oauthAccount?.emailAddress ??
-        (await getGitEmail()) ??
-        (process.env.COO_CREATOR
-          ? `${process.env.COO_CREATOR}@anthropic.com`
-          : undefined))
-      : undefined
-
+  const email = undefined
   return {
     customIDs: {
       // for session level tests

@@ -8,7 +8,7 @@ import { clearConversation } from './clear'
 export default {
   type: 'local-jsx',
   name: 'onboarding',
-  description: '[ANT-ONLY] Run through the onboarding flow',
+  description: 'Run through the onboarding flow',
   isEnabled: true,
   isHidden: false,
   async call(onDone, context) {

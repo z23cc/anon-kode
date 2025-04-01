@@ -13,10 +13,7 @@ export function Help({
   onClose: () => void
 }): React.ReactNode {
   const theme = getTheme()
-  const isInternal = process.env.USER_TYPE === 'ant'
-  const moreHelp = isInternal
-    ? '[ANT-ONLY] For more help: go/claude-cli or #claude-cli-feedback'
-    : `Learn more at: ${MACRO.README_URL}`
+  const moreHelp = `Learn more at: ${MACRO.README_URL}`
 
   const filteredCommands = commands.filter(cmd => !cmd.isHidden)
   const [count, setCount] = React.useState(0)
