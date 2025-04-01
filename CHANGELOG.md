@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.50]
+- unhide some internal commands like log and context
+
 ## [v0.0.49]
 - @yannbam fix import path [81](https://github.com/dnakov/anon-kode/pull/81)
 
