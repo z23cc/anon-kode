@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.51]
+- Added support for Azure OpenAI Service
+  - Created a configuration flow for Azure with resource name and deployment name
+  - Updated API calls to use Azure-specific endpoints and authentication headers
+- Improved Ollama integration
+  - Added dedicated server URL configuration screen
+  - Enhanced error handling and user feedback for connection issues
+  - Fixed model loading to properly display error messages
+  - Updated to use the correct Ollama API endpoints
+
 ## [v0.0.50]
 - unhide some internal commands like log and context
 

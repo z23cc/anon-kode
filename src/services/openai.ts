@@ -256,7 +256,25 @@ export async function getCompletion(
 
   const apiKeyRequired = type === 'large' ? config.largeModelApiKeyRequired : config.smallModelApiKeyRequired
   const baseURL = type === 'large' ? config.largeModelBaseURL : config.smallModelBaseURL
+  const provider = config.primaryProvider
+  const isAzure = provider === 'azure'
   const proxy = config.proxy ? new ProxyAgent(config.proxy) : undefined
+
+  // Define Azure-specific API endpoint with version
+  const azureApiVersion = '2024-06-01'
+  const endpoint = isAzure ? `/chat/completions?api-version=${azureApiVersion}` : '/chat/completions'
+
+  // Set up headers based on provider
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  
+  // Azure uses api-key header instead of Authorization: Bearer
+  if (isAzure) {
+    headers['api-key'] = apiKey
+  } else {
+    headers['Authorization'] = `Bearer ${apiKey}`
+  }
 
   logEvent('get_completion', {
     messages: JSON.stringify(opts.messages.map(m => ({
@@ -318,12 +336,9 @@ export async function getCompletion(
 
   try {
     if (opts.stream) {
-      const response = await fetch(`${baseURL}/chat/completions`, {
+      const response = await fetch(`${baseURL}${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ ...opts, stream: true }),
         dispatcher: proxy,
       })
@@ -403,12 +418,9 @@ export async function getCompletion(
       })()
     }
     
-    const response = await fetch(`${baseURL}/chat/completions`, {
+    const response = await fetch(`${baseURL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(opts),
       dispatcher: proxy,
     })

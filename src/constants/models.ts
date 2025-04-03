@@ -626,8 +626,8 @@ export default {
           "max_tokens": 8192,
           "max_input_tokens": 200000,
           "max_output_tokens": 8192,
-          "input_cost_per_token": 0.000001,
-          "output_cost_per_token": 0.000005,
+          "input_cost_per_token": 0.0000008,
+          "output_cost_per_token": 0.000004,
           "cache_creation_input_token_cost": 0.00000125,
           "cache_read_input_token_cost": 1e-7,
           "provider": "anthropic",
@@ -695,8 +695,8 @@ export default {
           "max_audio_per_prompt": 1,
           "max_pdf_size_mb": 30,
           "input_cost_per_audio_token": 7e-7,
-          "input_cost_per_token": 1e-7,
-          "output_cost_per_token": 4e-7,
+          "input_cost_per_token": 0.0000001,
+          "output_cost_per_token": 0.0000004,
           "provider": "gemini",
           "mode": "chat",
           "rpm": 10000,
@@ -721,8 +721,8 @@ export default {
           "max_audio_per_prompt": 1,
           "max_pdf_size_mb": 30,
           "input_cost_per_audio_token": 7.5e-8,
-          "input_cost_per_token": 7.5e-8,
-          "output_cost_per_token": 3e-7,
+          "input_cost_per_token": 0.000000075,
+          "output_cost_per_token": 0.0000003,
           "provider": "gemini",
           "mode": "chat",
           "rpm": 60000,
@@ -816,5 +816,9 @@ export const providers = {
   "groq": {
     "name": "Groq",
     "baseURL": "https://api.groq.com/openai/v1"
+  },
+  "azure": {
+    "name": "Azure OpenAI",
+    "baseURL": "" // Will be dynamically constructed based on resource name
   }
 }

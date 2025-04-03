@@ -67,13 +67,13 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
   const exitState = useExitOnCtrlCD(() => process.exit(0))
   
   // Screen navigation stack
-  const [screenStack, setScreenStack] = useState<Array<'modelType' | 'provider' | 'apiKey' | 'model' | 'modelParams' | 'confirmation'>>(['modelType'])
+  const [screenStack, setScreenStack] = useState<Array<'modelType' | 'provider' | 'apiKey' | 'resourceName' | 'baseUrl' | 'model' | 'modelInput' | 'modelParams' | 'confirmation'>>(['modelType'])
   
   // Current screen is always the last item in the stack
   const currentScreen = screenStack[screenStack.length - 1]
   
   // Function to navigate to a new screen
-  const navigateTo = (screen: 'modelType' | 'provider' | 'apiKey' | 'model' | 'modelParams' | 'confirmation') => {
+  const navigateTo = (screen: 'modelType' | 'provider' | 'apiKey' | 'resourceName' | 'baseUrl' | 'model' | 'modelInput' | 'modelParams' | 'confirmation') => {
     setScreenStack(prev => [...prev, screen])
   }
   
@@ -117,7 +117,17 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
   const [modelSearchCursorOffset, setModelSearchCursorOffset] = useState<number>(0)
   const [cursorOffset, setCursorOffset] = useState<number>(0)
   const [apiKeyEdited, setApiKeyEdited] = useState<boolean>(false)
-
+  
+  // State for Azure-specific configuration
+  const [resourceName, setResourceName] = useState<string>('')
+  const [resourceNameCursorOffset, setResourceNameCursorOffset] = useState<number>(0)
+  const [customModelName, setCustomModelName] = useState<string>('')
+  const [customModelNameCursorOffset, setCustomModelNameCursorOffset] = useState<number>(0)
+  
+  // State for Ollama-specific configuration
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState<string>('http://localhost:11434/v1')
+  const [ollamaBaseUrlCursorOffset, setOllamaBaseUrlCursorOffset] = useState<number>(0)
+  
   // Model type options
   const modelTypeOptions = [
     { label: 'Both Large and Small Models', value: 'both' },
@@ -147,8 +157,10 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
   
   useEffect(() => {
     if(!apiKeyEdited && selectedProvider) {
-      if(!apiKey && process.env[selectedProvider.toUpperCase() + '_API_KEY']) {
+      if(process.env[selectedProvider.toUpperCase() + '_API_KEY']) {
         setApiKey(process.env[selectedProvider.toUpperCase() + '_API_KEY'] as string)
+      } else {
+        setApiKey('')
       }
     }
   }, [selectedProvider, apiKey, apiKeyEdited])
@@ -223,6 +235,9 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       // For custom provider, save and exit
       saveConfiguration(providerType, selectedModel || config.largeModelName || '')
       onDone()
+    } else if (provider === 'ollama') {
+      // For Ollama, go to base URL configuration
+      navigateTo('baseUrl')
     } else {
       // For other providers, go to API key input
       navigateTo('apiKey')
@@ -256,6 +271,55 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       throw error
     }
   }
+
+  async function fetchOllamaModels() {
+    try {
+      const response = await fetch(`${ollamaBaseUrl}/models`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`)
+      }
+      
+      let { data: models } = await response.json()
+      
+      if (!models || !Array.isArray(models)) {
+        throw new Error('Invalid response from Ollama API: missing models array')
+      }
+      
+      // Transform Ollama models to our format
+      const ollamaModels = models.map((model: any) => ({
+        model: model.name ?? model.id,
+        provider: 'ollama',
+        max_tokens: 4096, // Default value
+        supports_vision: false,
+        supports_function_calling: true,
+        supports_reasoning_effort: false
+      }))
+      
+      setAvailableModels(ollamaModels)
+      
+      // Only navigate if we have models
+      if (ollamaModels.length > 0) {
+        navigateTo('model')
+      } else {
+        setModelLoadError('No models found in your Ollama installation')
+      }
+      
+      return ollamaModels
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      
+      if (errorMessage.includes('fetch')) {
+        setModelLoadError(`Could not connect to Ollama server at ${ollamaBaseUrl}. Make sure Ollama is running and the URL is correct.`)
+      } else {
+        setModelLoadError(`Error loading Ollama models: ${errorMessage}`)
+      }
+      
+      console.error('Error fetching Ollama models:', error)
+      return []
+    }
+  }
+
   async function fetchModels() {
     setIsLoadingModels(true)
     setModelLoadError(null)
@@ -269,11 +333,17 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
         return geminiModels
       }
       
+      // For Azure, skip model fetching and go directly to model input
+      if (selectedProvider === 'azure') {
+        navigateTo('modelInput')
+        return []
+      }
+      
       // For all other providers, use the OpenAI client
       const baseURL = providers[selectedProvider]?.baseURL
 
       const openai = new OpenAI({
-        apiKey: apiKey,
+        apiKey: apiKey || 'dummy-key-for-ollama', // Ollama doesn't need a real key
         baseURL: baseURL,
         dangerouslyAllowBrowser: true
       })
@@ -302,9 +372,20 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       
       return fetchedModels
     } catch (error) {
+      // Properly display the error to the user
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setModelLoadError(`Failed to load models: ${errorMessage}`)
+      
+      // For Ollama specifically, show more helpful guidance
+      if (selectedProvider === 'ollama' && errorMessage.includes('ECONNREFUSED')) {
+        setModelLoadError(`Could not connect to Ollama server at ${ollamaBaseUrl}. Make sure Ollama is running and the URL is correct.`)
+      }
+      
+      // Log for debugging, but errors are now shown in UI
       console.error('Error fetching models:', error)
-      setModelLoadError(`Failed to load models: ${error.message}`)
-      throw error
+      
+      // Stay on the current screen when there's an error
+      return []
     } finally {
       setIsLoadingModels(false)
     }
@@ -313,11 +394,52 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
   function handleApiKeySubmit(key: string) {
     setApiKey(key)
     
+    // For Azure, go to resource name input next
+    if (selectedProvider === 'azure') {
+      navigateTo('resourceName')
+      return
+    }
+    
     // Fetch models with the provided API key
     fetchModels()
       .catch(error => {
         setModelLoadError(`Error loading models: ${error.message}`)
       })
+  }
+  
+  function handleResourceNameSubmit(name: string) {
+    setResourceName(name)
+    navigateTo('modelInput')
+  }
+  
+  function handleOllamaBaseUrlSubmit(url: string) {
+    setOllamaBaseUrl(url)
+    setIsLoadingModels(true)
+    setModelLoadError(null)
+    
+    // Use the dedicated Ollama model fetch function
+    fetchOllamaModels()
+      .finally(() => {
+        setIsLoadingModels(false)
+      })
+  }
+  
+  function handleCustomModelSubmit(model: string) {
+    setCustomModelName(model)
+    setSelectedModel(model)
+    
+    // No model info available, so set default values
+    setSupportsReasoningEffort(false)
+    setReasoningEffort(null)
+    
+    // Use the global config value or empty string for max tokens
+    setMaxTokens(config.maxTokens?.toString() || '')
+    setMaxTokensCursorOffset(config.maxTokens?.toString().length || 0)
+    
+    // Go to model parameters screen
+    navigateTo('modelParams')
+    // Reset active field index
+    setActiveFieldIndex(0)
   }
   
   function handleModelSelection(model: string) {
@@ -355,7 +477,16 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
 
   
   function saveConfiguration(provider: ProviderType, model: string) {
-    const baseURL = providers[provider]?.baseURL || ""
+    let baseURL = providers[provider]?.baseURL || ""
+    
+    // For Azure, construct the baseURL using the resource name
+    if (provider === 'azure') {
+      baseURL = `https://${resourceName}.openai.azure.com/openai/deployments/${model}`
+    } 
+    // For Ollama, use the custom base URL
+    else if (provider === 'ollama') {
+      baseURL = ollamaBaseUrl
+    }
     
     // Create a new config object based on the existing one
     const newConfig = { ...config }
@@ -363,11 +494,14 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     // Update the primary provider regardless of which model we're changing
     newConfig.primaryProvider = provider
     
+    // Determine if the provider requires an API key
+    const requiresApiKey = provider !== 'ollama'
+    
     // Update the appropriate model based on the selection
     if (modelTypeToChange === 'both' || modelTypeToChange === 'large') {
       newConfig.largeModelName = model
       newConfig.largeModelBaseURL = baseURL
-      if (apiKey) {
+      if (apiKey && requiresApiKey) {
         newConfig.largeModelApiKeys = [apiKey]
       }
       if (maxTokens) {
@@ -378,17 +512,13 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       } else {
         newConfig.largeModelReasoningEffort = undefined
       }
-      if(apiKey) {
-        newConfig.largeModelApiKeyRequired = true
-      } else {
-        newConfig.largeModelApiKeyRequired = false
-      }
+      newConfig.largeModelApiKeyRequired = requiresApiKey
     }
     
     if (modelTypeToChange === 'both' || modelTypeToChange === 'small') {
       newConfig.smallModelName = model
       newConfig.smallModelBaseURL = baseURL
-      if (apiKey) {
+      if (apiKey && requiresApiKey) {
         newConfig.smallModelApiKeys = [apiKey]
       }
       if (maxTokens) {
@@ -399,11 +529,7 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       } else {
         newConfig.smallModelReasoningEffort = undefined
       }
-      if(apiKey) {
-        newConfig.smallModelApiKeyRequired = true
-      } else {
-        newConfig.smallModelApiKeyRequired = false
-      }
+      newConfig.smallModelApiKeyRequired = requiresApiKey
     }
     
     // Save the updated configuration
@@ -453,7 +579,7 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     setModelSearchCursorOffset(offset)
   }
 
-  // Handle Tab key for form navigation in model params screen
+  // Handle input for Resource Name screen
   useInput((input, key) => {
     // Handle API key submission on Enter
     if (currentScreen === 'apiKey' && key.return) {
@@ -472,6 +598,28 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       return
     }
     
+    // Handle Resource Name submission on Enter
+    if (currentScreen === 'resourceName' && key.return) {
+      if (resourceName) {
+        handleResourceNameSubmit(resourceName)
+      }
+      return
+    }
+    
+    // Handle Ollama Base URL submission on Enter
+    if (currentScreen === 'baseUrl' && key.return) {
+      handleOllamaBaseUrlSubmit(ollamaBaseUrl)
+      return
+    }
+    
+    // Handle Custom Model Name submission on Enter
+    if (currentScreen === 'modelInput' && key.return) {
+      if (customModelName) {
+        handleCustomModelSubmit(customModelName)
+      }
+      return
+    }
+    
     // Handle confirmation on Enter
     if (currentScreen === 'confirmation' && key.return) {
       handleConfirmation()
@@ -484,7 +632,6 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
       setModelLoadError('Please use your terminal\'s paste functionality or type the API key manually')
       return
     }
-    
     
     // Handle Tab key for form navigation in model params screen
     if (currentScreen === 'modelParams' && key.tab) {
@@ -843,6 +990,201 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     );
   }
 
+  // Render Resource Name Input Screen
+  if (currentScreen === 'resourceName') {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Box 
+          flexDirection="column" 
+          gap={1} 
+          borderStyle="round"
+          borderColor={theme.secondaryBorder}
+          paddingX={2}
+          paddingY={1}
+        >
+          <Text bold>
+            Azure Resource Setup {exitState.pending ? `(press ${exitState.keyName} again to exit)` : ''}
+          </Text>
+          <Box flexDirection="column" gap={1}>
+            <Text bold>Enter your Azure OpenAI resource name:</Text>
+            <Box flexDirection="column" width={70}>
+              <Text color={theme.secondaryText}>
+                This is the name of your Azure OpenAI resource (without the full domain).
+                <Newline />
+                For example, if your endpoint is "https://myresource.openai.azure.com", enter "myresource".
+              </Text>
+            </Box>
+            
+            <Box>
+              <TextInput
+                placeholder="myazureresource"
+                value={resourceName}
+                onChange={setResourceName}
+                onSubmit={handleResourceNameSubmit}
+                columns={100}
+                cursorOffset={resourceNameCursorOffset}
+                onChangeCursorOffset={setResourceNameCursorOffset}
+                showCursor={true}
+              />
+            </Box>
+            
+            <Box marginTop={1}>
+              <Text>
+                <Text color={theme.suggestion} dimColor={!resourceName}>
+                  [Submit Resource Name]
+                </Text>
+                <Text> - Press Enter or click to continue</Text>
+              </Text>
+            </Box>
+            
+            <Box marginTop={1}>
+              <Text dimColor>
+                Press <Text color={theme.suggestion}>Enter</Text> to continue or <Text color={theme.suggestion}>Esc</Text> to go back
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
+
+  // Render Ollama Base URL Input Screen
+  if (currentScreen === 'baseUrl') {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Box 
+          flexDirection="column" 
+          gap={1} 
+          borderStyle="round"
+          borderColor={theme.secondaryBorder}
+          paddingX={2}
+          paddingY={1}
+        >
+          <Text bold>
+            Ollama Server Setup {exitState.pending ? `(press ${exitState.keyName} again to exit)` : ''}
+          </Text>
+          <Box flexDirection="column" gap={1}>
+            <Text bold>Enter your Ollama server URL:</Text>
+            <Box flexDirection="column" width={70}>
+              <Text color={theme.secondaryText}>
+                This is the URL of your Ollama server.
+                <Newline />
+                Default is http://localhost:11434/v1 for local Ollama installations.
+              </Text>
+            </Box>
+            
+            <Box>
+              <TextInput
+                placeholder="http://localhost:11434/v1"
+                value={ollamaBaseUrl}
+                onChange={setOllamaBaseUrl}
+                onSubmit={handleOllamaBaseUrlSubmit}
+                columns={100}
+                cursorOffset={ollamaBaseUrlCursorOffset}
+                onChangeCursorOffset={setOllamaBaseUrlCursorOffset}
+                showCursor={!isLoadingModels}
+                focus={!isLoadingModels}
+              />
+            </Box>
+            
+            <Box marginTop={1}>
+              <Text>
+                <Text color={isLoadingModels ? theme.secondaryText : theme.suggestion}>
+                  [Submit Base URL]
+                </Text>
+                <Text> - Press Enter or click to continue</Text>
+              </Text>
+            </Box>
+            
+            {isLoadingModels && (
+              <Box marginTop={1}>
+                <Text color={theme.success}>
+                  Connecting to Ollama server...
+                </Text>
+              </Box>
+            )}
+
+            {modelLoadError && (
+              <Box marginTop={1}>
+                <Text color="red">
+                  Error: {modelLoadError}
+                </Text>
+              </Box>
+            )}
+            
+            <Box marginTop={1}>
+              <Text dimColor>
+                Press <Text color={theme.suggestion}>Enter</Text> to continue or <Text color={theme.suggestion}>Esc</Text> to go back
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
+
+  // Render Custom Model Input Screen
+  if (currentScreen === 'modelInput') {
+    const modelTypeText = modelTypeToChange === 'both' 
+      ? 'both large and small models' 
+      : `your ${modelTypeToChange} model`;
+    
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Box 
+          flexDirection="column" 
+          gap={1} 
+          borderStyle="round"
+          borderColor={theme.secondaryBorder}
+          paddingX={2}
+          paddingY={1}
+        >
+          <Text bold>
+            Azure Model Setup {exitState.pending ? `(press ${exitState.keyName} again to exit)` : ''}
+          </Text>
+          <Box flexDirection="column" gap={1}>
+            <Text bold>Enter your Azure OpenAI deployment name for {modelTypeText}:</Text>
+            <Box flexDirection="column" width={70}>
+              <Text color={theme.secondaryText}>
+                This is the deployment name you configured in your Azure OpenAI resource.
+                <Newline />
+                For example: "gpt-4", "gpt-35-turbo", etc.
+              </Text>
+            </Box>
+            
+            <Box>
+              <TextInput
+                placeholder="gpt-4"
+                value={customModelName}
+                onChange={setCustomModelName}
+                onSubmit={handleCustomModelSubmit}
+                columns={100}
+                cursorOffset={customModelNameCursorOffset}
+                onChangeCursorOffset={setCustomModelNameCursorOffset}
+                showCursor={true}
+              />
+            </Box>
+            
+            <Box marginTop={1}>
+              <Text>
+                <Text color={theme.suggestion} dimColor={!customModelName}>
+                  [Submit Model Name]
+                </Text>
+                <Text> - Press Enter or click to continue</Text>
+              </Text>
+            </Box>
+            
+            <Box marginTop={1}>
+              <Text dimColor>
+                Press <Text color={theme.suggestion}>Enter</Text> to continue or <Text color={theme.suggestion}>Esc</Text> to go back
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
+
   // Render Confirmation Screen
   if (currentScreen === 'confirmation') {
     // Determine what will be updated
@@ -851,6 +1193,9 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
     
     // Get provider display name
     const providerDisplayName = getProviderLabel(selectedProvider, 0).split(' (')[0]
+    
+    // Determine if provider requires API key
+    const showsApiKey = selectedProvider !== 'ollama'
     
     return (
       <Box flexDirection="column" gap={1}>
@@ -879,6 +1224,20 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
                 <Text color={theme.suggestion}>{providerDisplayName}</Text>
               </Text>
               
+              {selectedProvider === 'azure' && (
+                <Text>
+                  <Text bold>Resource Name: </Text>
+                  <Text color={theme.suggestion}>{resourceName}</Text>
+                </Text>
+              )}
+              
+              {selectedProvider === 'ollama' && (
+                <Text>
+                  <Text bold>Server URL: </Text>
+                  <Text color={theme.suggestion}>{ollamaBaseUrl}</Text>
+                </Text>
+              )}
+              
               {updatingLarge && (
                 <Text>
                   <Text bold>Large Model: </Text>
@@ -897,7 +1256,7 @@ export function ModelSelector({ onDone: onDoneProp, abortController }: Props): R
                 </Text>
               )}
               
-              {apiKey && (
+              {apiKey && showsApiKey && (
                 <Text>
                   <Text bold>API Key: </Text>
                   <Text color={theme.suggestion}>****{apiKey.slice(-4)}</Text>

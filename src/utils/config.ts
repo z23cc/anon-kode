@@ -95,6 +95,7 @@ export type ProviderType =
   | 'groq'
   | 'gemini'
   | 'ollama'
+  | 'azure'
   | 'custom'
 
 export type AccountInfo = {
