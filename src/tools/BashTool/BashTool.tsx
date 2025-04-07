@@ -12,6 +12,7 @@ import { isInDirectory } from '../../utils/file'
 import { logError } from '../../utils/log'
 import { PersistentShell } from '../../utils/PersistentShell'
 import { getCwd, getOriginalCwd } from '../../utils/state'
+import { getGlobalConfig } from '../../utils/config'
 import BashToolResultMessage from './BashToolResultMessage'
 import { BANNED_COMMANDS, PROMPT } from './prompt'
 import { formatOutput, getCommandFilePaths } from './utils'
@@ -67,7 +68,10 @@ export const BashTool = {
     }
   },
   async prompt() {
-    return PROMPT
+    const config = getGlobalConfig()
+    const modelName = config.largeModelName || '<Unknown Model>'
+    // Substitute the placeholder in the static PROMPT string
+    return PROMPT.replace(/{MODEL_NAME}/g, modelName) 
   },
   isReadOnly() {
     return false
