@@ -25,7 +25,9 @@
   ],
   "scripts": {
     "dev": "tsx ./src/entrypoints/cli.tsx --verbose",
-    "build": "bun build src/entrypoints/cli.tsx --minify --outfile cli.mjs --target=node"
+    "build": "bun build src/entrypoints/cli.tsx --minify --outfile cli.mjs --target=node",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\""
   },
   "optionalDependencies": {
     "@img/sharp-darwin-arm64": "^0.33.5",
@@ -75,6 +77,7 @@
     "zod-to-json-schema": "^3.24.3"
   },
   "devDependencies": {
+    "prettier": "^3.5.3",
     "react-devtools-core": "^6.1.1",
     "tsx": "^4.19.3"
   }

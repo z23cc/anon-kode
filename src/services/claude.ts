@@ -245,10 +245,17 @@ function convertAnthropicMessagesToOpenAIMessages(messages: (UserMessage | Assis
               id: block.id,
             }],
           })
-      } if(block.type === 'tool_result') {
+      } else if(block.type === 'tool_result') {
+        // Ensure content is always a string for role:tool messages
+        let toolContent = block.content;
+        if (typeof toolContent !== 'string') {
+          // Convert content to string if it's not already
+          toolContent = JSON.stringify(toolContent);
+        }
+        
         toolResults[block.tool_use_id] = {
           role: 'tool',
-          content: block.content,
+          content: toolContent,
           tool_call_id: block.tool_use_id,
         }
       }
@@ -396,19 +403,19 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   }
 
 
-  if(message.reasoning) {
+  if((message as any).reasoning) {
     contentBlocks.push({
       type: 'thinking',
-      thinking: message?.reasoning,
+      thinking: (message as any).reasoning,
       signature: '',
     })
   }
 
   // NOTE: For deepseek api, the key for its returned reasoning process is reasoning_content 
-  if (message.reasoning_content) {
+  if ((message as any).reasoning_content) {
     contentBlocks.push({
       type: 'thinking',
-      thinking: message?.reasoning_content,
+      thinking: (message as any).reasoning_content,
       signature: '',
     })
   }
@@ -433,12 +440,12 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   return finalMessage
 }
 
-let anthropicClient: Anthropic | null = null
+let anthropicClient: Anthropic | AnthropicBedrock | AnthropicVertex | null = null
 
 /**
  * Get the Anthropic client, creating it if it doesn't exist
  */
-export function getAnthropicClient(model?: string): Anthropic {
+export function getAnthropicClient(model?: string): Anthropic | AnthropicBedrock | AnthropicVertex {
   if (anthropicClient) {
     return anthropicClient
   }
@@ -804,7 +811,7 @@ async function queryOpenAI(
       const s = await getCompletion(modelType, opts)
       let finalResponse
       if(opts.stream) {
-        finalResponse = await handleMessageStream(s)
+        finalResponse = await handleMessageStream(s as ChatCompletionStream)
       } else {
         finalResponse = s
       }

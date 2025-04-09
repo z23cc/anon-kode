@@ -157,6 +157,56 @@ function isRateLimitError(errMsg: string): boolean {
   return lowerMsg.includes('rate limit') || lowerMsg.includes('too many requests') || lowerMsg.includes('429');
 }
 
+// Model-specific feature flags - can be extended with more properties as needed
+interface ModelFeatures {
+  usesMaxCompletionTokens: boolean;
+}
+
+// Map of model identifiers to their specific features
+const MODEL_FEATURES: Record<string, ModelFeatures> = {
+  // OpenAI thinking models
+  'o1': { usesMaxCompletionTokens: true },
+  'o1-preview': { usesMaxCompletionTokens: true },
+  'o1-mini': { usesMaxCompletionTokens: true },
+  'o1-pro': { usesMaxCompletionTokens: true },
+  'o3-mini': { usesMaxCompletionTokens: true },
+};
+
+// Helper to get model features based on model ID/name
+function getModelFeatures(modelName: string): ModelFeatures {
+  // Check for exact matches first
+  if (MODEL_FEATURES[modelName]) {
+    return MODEL_FEATURES[modelName];
+  }
+  
+  // Check for partial matches (e.g., if modelName contains a known model ID)
+  for (const [key, features] of Object.entries(MODEL_FEATURES)) {
+    if (modelName.includes(key)) {
+      return features;
+    }
+  }
+  
+  // Default features for unknown models
+  return { usesMaxCompletionTokens: false };
+}
+
+// Apply model-specific parameter transformations based on model features
+function applyModelSpecificTransformations(opts: OpenAI.ChatCompletionCreateParams): void {
+  if (!opts.model || typeof opts.model !== 'string') {
+    return;
+  }
+  
+  const features = getModelFeatures(opts.model);
+  
+  // Apply transformations based on features
+  if (features.usesMaxCompletionTokens && 'max_tokens' in opts && !('max_completion_tokens' in opts)) {
+    opts.max_completion_tokens = opts.max_tokens;
+    delete opts.max_tokens;
+  }
+  
+  // Add more transformations here as needed
+}
+
 async function applyModelErrorFixes(opts: OpenAI.ChatCompletionCreateParams, baseURL: string) {
   for (const handler of ERROR_HANDLERS) {
     if (hasModelError(baseURL, opts.model, handler.type)) {
@@ -235,339 +285,369 @@ async function handleApiError(
 }
 
 export async function getCompletion(
-  type: 'large' | 'small', 
+  type: "large" | "small",
   opts: OpenAI.ChatCompletionCreateParams,
   attempt: number = 0,
   maxAttempts: number = 5
 ): Promise<OpenAI.ChatCompletion | AsyncIterable<OpenAI.ChatCompletionChunk>> {
-  const config = getGlobalConfig()
-  const failedKeys = getSessionState('failedApiKeys')[type]
-  const availableKeys = getApiKeys(config, type)
-  const allKeysFailed = failedKeys.length === availableKeys.length && availableKeys.length > 0
+  const config = getGlobalConfig();
+  const failedKeys = getSessionState("failedApiKeys")[type];
+  const availableKeys = getApiKeys(config, type);
+  const allKeysFailed = failedKeys.length === availableKeys.length && availableKeys.length > 0;
 
   if (attempt >= maxAttempts || allKeysFailed) {
-    throw new Error('Max attempts reached or all API keys failed')
+    throw new Error("Max attempts reached or all API keys failed");
   }
 
-  const apiKey = getActiveApiKey(config, type)
-  if (!apiKey || apiKey.trim() === '') {
-    return getCompletion(type, opts, attempt + 1, maxAttempts)
+  const apiKey = getActiveApiKey(config, type);
+  if (!apiKey || apiKey.trim() === "") {
+    return getCompletion(type, opts, attempt + 1, maxAttempts);
   }
 
-  const apiKeyRequired = type === 'large' ? config.largeModelApiKeyRequired : config.smallModelApiKeyRequired
-  const baseURL = type === 'large' ? config.largeModelBaseURL : config.smallModelBaseURL
-  const provider = config.primaryProvider
-  const isAzure = provider === 'azure'
-  const proxy = config.proxy ? new ProxyAgent(config.proxy) : undefined
+  const apiKeyRequired = type === "large" ? config.largeModelApiKeyRequired : config.smallModelApiKeyRequired;
+  const baseURL = type === "large" ? config.largeModelBaseURL : config.smallModelBaseURL;
+  const provider = config.primaryProvider;
+  const isAzure = provider === "azure";
+  const proxy = config.proxy ? new ProxyAgent(config.proxy) : undefined;
 
   // Define Azure-specific API endpoint with version
-  const azureApiVersion = '2024-06-01'
-  const endpoint = isAzure ? `/chat/completions?api-version=${azureApiVersion}` : '/chat/completions'
+  const azureApiVersion = "2024-06-01";
+  const endpoint = isAzure ? `/chat/completions?api-version=${azureApiVersion}` : "/chat/completions";
 
   // Set up headers based on provider
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  
+    "Content-Type": "application/json",
+  };
+
   // Azure uses api-key header instead of Authorization: Bearer
   if (isAzure) {
-    headers['api-key'] = apiKey
+    headers["api-key"] = apiKey;
   } else {
-    headers['Authorization'] = `Bearer ${apiKey}`
+    headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
-  logEvent('get_completion', {
-    messages: JSON.stringify(opts.messages.map(m => ({
-      role: m.role,
-      content: typeof m.content === 'string' ? m.content.slice(0, 100) : (m.content ? JSON.stringify(m.content?.map(c => ({
-        type: c.type,
-        text: c.text?.slice(0, 100)
-      }))) : '')
-    })))
-  })
-  opts = structuredClone(opts)
+  logEvent("get_completion", {
+    messages: JSON.stringify(
+      opts.messages.map((m) => ({
+        role: m.role,
+        content:
+          typeof m.content === "string"
+            ? m.content.slice(0, 100)
+            : m.content
+            ? JSON.stringify(
+                m.content?.map((c) => ({
+                  type: c.type,
+                  text: c.text?.slice(0, 100),
+                }))
+              )
+            : "",
+      }))
+    ),
+  });
+  opts = structuredClone(opts);
 
-  await applyModelErrorFixes(opts, baseURL)
+  // Apply model-specific parameter transformations (e.g. max_tokens → max_completion_tokens for o1/o3 models)
+  applyModelSpecificTransformations(opts);
 
-  if (config.primaryProvider === 'custom') {
-    opts.messages = opts.messages.map(msg => {
-      if (msg.role === 'tool' && 
-          Array.isArray(msg.content)
-        ) {
+  await applyModelErrorFixes(opts, baseURL);
+
+  // Make sure all tool messages have string content
+  opts.messages = opts.messages.map((msg) => {
+    if (msg.role === "tool") {
+      // Ensure content is a string for all tool messages
+      if (Array.isArray(msg.content)) {
         return {
           ...msg,
-          content: msg.content.map(c => c.text).join('\n\n')
+          content:
+            msg.content
+              .map((c) => c.text || "")
+              .filter(Boolean)
+              .join("\n\n") || "(empty content)",
+        };
+      } else if (typeof msg.content !== "string") {
+        // For non-array, non-string content, convert to JSON string
+        return {
+          ...msg,
+          content: typeof msg.content === "undefined" ? "(empty content)" : JSON.stringify(msg.content),
         };
       }
-      return msg;
-    });
-  }
+    }
+    return msg;
+  });
 
   const handleResponse = async (response: Response) => {
     try {
-      let responseData: any
-      if(response.ok) {
-        responseData = await response.json() as any
-        if(responseData?.response?.includes('429')) {
-          return handleRateLimit(opts, response, type, config, attempt, maxAttempts)
+      let responseData: any;
+      if (response.ok) {
+        responseData = (await response.json()) as any;
+        if (responseData?.response?.includes("429")) {
+          return handleRateLimit(opts, response, type, config, attempt, maxAttempts);
         }
         // Only reset failed keys if this key was previously marked as failed
-        const failedKeys = getSessionState('failedApiKeys')[type]
+        const failedKeys = getSessionState("failedApiKeys")[type];
         if (apiKey && failedKeys.includes(apiKey)) {
-          setSessionState('failedApiKeys', {
-            ...getSessionState('failedApiKeys'),
-            [type]: failedKeys.filter(k => k !== apiKey)
-          })
+          setSessionState("failedApiKeys", {
+            ...getSessionState("failedApiKeys"),
+            [type]: failedKeys.filter((k) => k !== apiKey),
+          });
         }
-        return responseData
+        return responseData;
       } else {
-        const error = await response.json() as { error?: { message: string }, message?: string }
-        return handleApiError(response, error, type, opts, config, attempt, maxAttempts)
+        const error = (await response.json()) as { error?: { message: string }; message?: string };
+        return handleApiError(response, error, type, opts, config, attempt, maxAttempts);
       }
     } catch (jsonError) {
       // If we can't parse the error as JSON, use the status text
       return handleApiError(
-        response, 
-        { error: { message: `HTTP error ${response.status}: ${response.statusText}` }}, 
-        type, opts, config, attempt, maxAttempts
-      )
+        response,
+        { error: { message: `HTTP error ${response.status}: ${response.statusText}` } },
+        type,
+        opts,
+        config,
+        attempt,
+        maxAttempts
+      );
     }
-  }
+  };
 
   try {
     if (opts.stream) {
       const response = await fetch(`${baseURL}${endpoint}`, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify({ ...opts, stream: true }),
         dispatcher: proxy,
-      })
-      
+      });
+
       if (!response.ok) {
         try {
-          const error = await response.json() as { error?: { message: string }, message?: string }
-          return handleApiError(response, error, type, opts, config, attempt, maxAttempts)
+          const error = (await response.json()) as { error?: { message: string }; message?: string };
+          return handleApiError(response, error, type, opts, config, attempt, maxAttempts);
         } catch (jsonError) {
           // If we can't parse the error as JSON, use the status text
           return handleApiError(
-            response, 
-            { error: { message: `HTTP error ${response.status}: ${response.statusText}` }}, 
-            type, opts, config, attempt, maxAttempts
-          )
+            response,
+            { error: { message: `HTTP error ${response.status}: ${response.statusText}` } },
+            type,
+            opts,
+            config,
+            attempt,
+            maxAttempts
+          );
         }
       }
-      
+
       // Only reset failed keys if this key was previously marked as failed
-      const failedKeys = getSessionState('failedApiKeys')[type]
+      const failedKeys = getSessionState("failedApiKeys")[type];
       if (apiKey && failedKeys.includes(apiKey)) {
-        setSessionState('failedApiKeys', {
-          ...getSessionState('failedApiKeys'),
-          [type]: failedKeys.filter(k => k !== apiKey)
-        })
+        setSessionState("failedApiKeys", {
+          ...getSessionState("failedApiKeys"),
+          [type]: failedKeys.filter((k) => k !== apiKey),
+        });
       }
-      
+
       // Create a stream that checks for errors while still yielding chunks
-      const stream = createStreamProcessor(response.body as any)
+      const stream = createStreamProcessor(response.body as any);
       return (async function* errorAwareStream() {
-        let hasReportedError = false
-        
+        let hasReportedError = false;
+
         try {
           for await (const chunk of stream) {
             // Safely check for errors
-            if (chunk && typeof chunk === 'object') {
-              const chunkObj = chunk as any
+            if (chunk && typeof chunk === "object") {
+              const chunkObj = chunk as any;
               if (chunkObj.error) {
                 if (!hasReportedError) {
-                  hasReportedError = true
-                  const errorValue = chunkObj.error
-                  
+                  hasReportedError = true;
+                  const errorValue = chunkObj.error;
+
                   // Log error
-                  logEvent('stream_error', {
-                    error: typeof errorValue === 'string' ? errorValue : JSON.stringify(errorValue)
-                  })
-                  
+                  logEvent("stream_error", {
+                    error: typeof errorValue === "string" ? errorValue : JSON.stringify(errorValue),
+                  });
+
                   // Handle the error - this will return a new completion or stream
-                  const errorResult = await handleApiError(response, errorValue, type, opts, config, attempt, maxAttempts)
-                  
+                  const errorResult = await handleApiError(response, errorValue, type, opts, config, attempt, maxAttempts);
+
                   // If it's a stream, yield from it and return
                   if (Symbol.asyncIterator in errorResult) {
                     for await (const errorChunk of errorResult as AsyncIterable<OpenAI.ChatCompletionChunk>) {
-                      yield errorChunk
+                      yield errorChunk;
                     }
-                    return // End this generator after yielding all chunks from error result
+                    return; // End this generator after yielding all chunks from error result
                   } else {
                     // It's a regular completion, not a stream - we can't really use this in a streaming context
                     // Just log it and continue with the original stream (skipping error chunks)
-                    console.warn('Error handler returned non-stream completion, continuing with original stream')
+                    console.warn("Error handler returned non-stream completion, continuing with original stream");
                   }
                 }
-                
+
                 // Skip yielding this error chunk
-                continue
+                continue;
               }
             }
-            
+
             // Only yield good chunks
-            yield chunk
+            yield chunk;
           }
         } catch (e) {
-          console.error('Error in stream processing:', e.message)
+          console.error("Error in stream processing:", e.message);
           // Rethrow to maintain error propagation
-          throw e
+          throw e;
         }
-      })()
+      })();
     }
-    
+
     const response = await fetch(`${baseURL}${endpoint}`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(opts),
       dispatcher: proxy,
-    })
+    });
 
-    logEvent('response.ok', {
+    logEvent("response.ok", {
       ok: String(response.ok),
       status: String(response.status),
       statusText: response.statusText,
-    })
-    
+    });
+
     if (!response.ok) {
       try {
-        const error = await response.json() as { error?: { message: string }, message?: string }
-        return handleApiError(response, error, type, opts, config, attempt, maxAttempts)
+        const error = (await response.json()) as { error?: { message: string }; message?: string };
+        return handleApiError(response, error, type, opts, config, attempt, maxAttempts);
       } catch (jsonError) {
         // If we can't parse the error as JSON, use the status text
         return handleApiError(
-          response, 
-          { error: { message: `HTTP error ${response.status}: ${response.statusText}` }}, 
-          type, opts, config, attempt, maxAttempts
-        )
+          response,
+          { error: { message: `HTTP error ${response.status}: ${response.statusText}` } },
+          type,
+          opts,
+          config,
+          attempt,
+          maxAttempts
+        );
       }
     }
 
     // Get the raw response data and check for errors even in OK responses
-    const responseData = await response.json() as OpenAI.ChatCompletion
-    
+    const responseData = (await response.json()) as OpenAI.ChatCompletion;
+
     // Check for error property in the successful response
-    if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-      const errorValue = (responseData as any).error
-      
+    if (responseData && typeof responseData === "object" && "error" in responseData) {
+      const errorValue = (responseData as any).error;
+
       // Log the error
-      logEvent('completion_error', {
-        error: typeof errorValue === 'string' ? errorValue : JSON.stringify(errorValue)
-      })
-      
+      logEvent("completion_error", {
+        error: typeof errorValue === "string" ? errorValue : JSON.stringify(errorValue),
+      });
+
       // Handle the error
-      return handleApiError(response, { error: errorValue }, type, opts, config, attempt, maxAttempts)
+      return handleApiError(response, { error: errorValue }, type, opts, config, attempt, maxAttempts);
     }
-    
+
     // Only reset failed keys if this key was previously marked as failed
-    const failedKeys = getSessionState('failedApiKeys')[type]
+    const failedKeys = getSessionState("failedApiKeys")[type];
     if (apiKey && failedKeys.includes(apiKey)) {
-      setSessionState('failedApiKeys', {
-        ...getSessionState('failedApiKeys'),
-        [type]: failedKeys.filter(k => k !== apiKey)
-      })
+      setSessionState("failedApiKeys", {
+        ...getSessionState("failedApiKeys"),
+        [type]: failedKeys.filter((k) => k !== apiKey),
+      });
     }
-    
-    return responseData
+
+    return responseData;
   } catch (error) {
     // Handle network errors or other exceptions
     if (attempt < maxAttempts - 1) {
-      const delay = Math.pow(2, attempt) * 1000
-      await new Promise(resolve => setTimeout(resolve, delay))
-      return getCompletion(type, opts, attempt + 1, maxAttempts)
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return getCompletion(type, opts, attempt + 1, maxAttempts);
     }
-    throw new Error(`Network error: ${error.message || 'Unknown error'}`)
-  } 
+    throw new Error(`Network error: ${error.message || "Unknown error"}`);
+  }
 }
 
-export function createStreamProcessor(
-  stream: any
-): AsyncGenerator<OpenAI.ChatCompletionChunk, void, unknown> {
+export function createStreamProcessor(stream: any): AsyncGenerator<OpenAI.ChatCompletionChunk, void, unknown> {
   if (!stream) {
-    throw new Error("Stream is null or undefined")
+    throw new Error("Stream is null or undefined");
   }
-  
+
   return (async function* () {
-    const reader = stream.getReader()
-    const decoder = new TextDecoder('utf-8')
-    let buffer = ''
-    
+    const reader = stream.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
     try {
       while (true) {
         let readResult;
         try {
           readResult = await reader.read();
         } catch (e) {
-          console.error('Error reading from stream:', e);
+          console.error("Error reading from stream:", e);
           break;
         }
-        
+
         const { done, value } = readResult;
         if (done) {
-          break
+          break;
         }
-        
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-        
-        let lineEnd = buffer.indexOf('\n')
-        while (lineEnd !== -1) {
-          const line = buffer.substring(0, lineEnd).trim()
-          buffer = buffer.substring(lineEnd + 1)
 
-          if (line === 'data: [DONE]') {
-            continue
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        let lineEnd = buffer.indexOf("\n");
+        while (lineEnd !== -1) {
+          const line = buffer.substring(0, lineEnd).trim();
+          buffer = buffer.substring(lineEnd + 1);
+
+          if (line === "data: [DONE]") {
+            continue;
           }
-          
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim()
-            if (!data) continue
-            
+
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (!data) continue;
+
             try {
-              const parsed = JSON.parse(data) as OpenAI.ChatCompletionChunk
-              yield parsed
+              const parsed = JSON.parse(data) as OpenAI.ChatCompletionChunk;
+              yield parsed;
             } catch (e) {
-              console.error('Error parsing JSON:', data, e)
+              console.error("Error parsing JSON:", data, e);
             }
           }
-          
-          lineEnd = buffer.indexOf('\n')
+
+          lineEnd = buffer.indexOf("\n");
         }
       }
-      
+
       // Process any remaining data in the buffer
       if (buffer.trim()) {
-        const lines = buffer.trim().split('\n')
+        const lines = buffer.trim().split("\n");
         for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            const data = line.slice(6).trim()
-            if (!data) continue
-            
+          if (line.startsWith("data: ") && line !== "data: [DONE]") {
+            const data = line.slice(6).trim();
+            if (!data) continue;
+
             try {
-              const parsed = JSON.parse(data) as OpenAI.ChatCompletionChunk
-              yield parsed
+              const parsed = JSON.parse(data) as OpenAI.ChatCompletionChunk;
+              yield parsed;
             } catch (e) {
-              console.error('Error parsing final JSON:', data, e)
+              console.error("Error parsing final JSON:", data, e);
             }
           }
         }
       }
     } catch (e) {
-      console.error('Unexpected error in stream processing:', e);
+      console.error("Unexpected error in stream processing:", e);
     } finally {
       try {
-        reader.releaseLock()
+        reader.releaseLock();
       } catch (e) {
-        console.error('Error releasing reader lock:', e);
+        console.error("Error releasing reader lock:", e);
       }
     }
-  })()
+  })();
 }
 
-export function streamCompletion(
-  stream: any
-): AsyncGenerator<OpenAI.ChatCompletionChunk, void, unknown> {
-  return createStreamProcessor(stream)
+export function streamCompletion(stream: any): AsyncGenerator<OpenAI.ChatCompletionChunk, void, unknown> {
+  return createStreamProcessor(stream);
 }
