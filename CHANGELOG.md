@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.52]
+- @panayao resolve TS errors in claude and openai services, add Prettier
+- Fix grok-3 stream_options error
+
 ## [v0.0.51]
 - Added support for Azure OpenAI Service
   - Created a configuration flow for Azure with resource name and deployment name

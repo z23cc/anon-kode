@@ -114,7 +114,7 @@ const ERROR_HANDLERS: ErrorHandler[] = [
   },
   { 
     type: ModelErrorType.StreamOptions, 
-    detect: (errMsg) => errMsg.includes('Extra inputs are not permitted') && errMsg.includes('stream_options'),
+    detect: (errMsg) => errMsg.includes('stream_options'),
     fix: async (opts) => {
       delete opts.stream_options
     }
