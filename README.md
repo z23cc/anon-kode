@@ -23,6 +23,20 @@ You can use the onboarding to set up the model, or `/model`.
 If you don't see the models you want on the list, you can manually set them in `/config`
 As long as you have an openai-like endpoint, it should work.
 
+## USE AS MCP SERVER
+
+Find the full path to `kode` with `which kode` then add the config to Claude Desktop:
+```
+{
+  "mcpServers": {
+    "claude-code": {
+      "command": "/path/to/kode",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
 ## HOW TO DEV
 
 ```
