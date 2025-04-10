@@ -26,7 +26,7 @@ type Setting =
       label: string
       value: boolean
       onChange(value: boolean): void
-      type: 'boolean',
+      type: 'boolean'
       disabled?: boolean
     }
   | {
@@ -35,7 +35,7 @@ type Setting =
       value: string
       options: string[]
       onChange(value: string): void
-      type: 'enum',
+      type: 'enum'
       disabled?: boolean
     }
   | {
@@ -43,7 +43,7 @@ type Setting =
       label: string
       value: string
       onChange(value: string): void
-      type: 'string',
+      type: 'string'
       disabled?: boolean
     }
   | {
@@ -51,7 +51,7 @@ type Setting =
       label: string
       value: number
       onChange(value: number): void
-      type: 'number',
+      type: 'number'
       disabled?: boolean
     }
   | {
@@ -59,7 +59,7 @@ type Setting =
       label: string
       value: string[]
       onChange(value: string[]): void
-      type: 'apiKeys',
+      type: 'apiKeys'
       disabled?: boolean
     }
 
@@ -71,7 +71,9 @@ export function Config({ onClose }: Props): React.ReactNode {
   const [editingString, setEditingString] = useState(false)
   const [currentInput, setCurrentInput] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
-  const [editingApiKey, setEditingApiKey] = useState<'small' | 'large' | null>(null)
+  const [editingApiKey, setEditingApiKey] = useState<'small' | 'large' | null>(
+    null,
+  )
   const [selectedKeyIndex, setSelectedKeyIndex] = useState<number | null>(null)
 
   // TODO: Add MCP servers
@@ -121,7 +123,7 @@ export function Config({ onClose }: Props): React.ReactNode {
         const config = { ...getGlobalConfig(), smallModelApiKeys: value }
         saveGlobalConfig(config)
         setGlobalConfig(config)
-      }
+      },
     },
     {
       id: 'smallModelBaseURL',
@@ -143,7 +145,7 @@ export function Config({ onClose }: Props): React.ReactNode {
         const config = { ...getGlobalConfig(), smallModelMaxTokens: value }
         saveGlobalConfig(config)
         setGlobalConfig(config)
-      }
+      },
     },
     {
       id: 'smallModelReasoningEffort',
@@ -152,11 +154,18 @@ export function Config({ onClose }: Props): React.ReactNode {
       options: ['low', 'medium', 'high', ''],
       type: 'enum',
       onChange(value: string) {
-        const config = { ...getGlobalConfig(), smallModelReasoningEffort: value as 'low' | 'medium' | 'high' | undefined }
+        const config = {
+          ...getGlobalConfig(),
+          smallModelReasoningEffort: value as
+            | 'low'
+            | 'medium'
+            | 'high'
+            | undefined,
+        }
         saveGlobalConfig(config)
         setGlobalConfig(config)
-      }
-    },    
+      },
+    },
     {
       id: 'largeModelName',
       label: 'Large model name',
@@ -189,8 +198,8 @@ export function Config({ onClose }: Props): React.ReactNode {
         const config = { ...getGlobalConfig(), largeModelApiKeys: value }
         saveGlobalConfig(config)
         setGlobalConfig(config)
-      }
-    },  
+      },
+    },
     {
       id: 'largeModelBaseURL',
       label: 'Large model base URL',
@@ -220,7 +229,14 @@ export function Config({ onClose }: Props): React.ReactNode {
       options: ['low', 'medium', 'high', ''],
       type: 'enum',
       onChange(value: string) {
-        const config = { ...getGlobalConfig(), largeModelReasoningEffort: value as 'low' | 'medium' | 'high' | undefined }
+        const config = {
+          ...getGlobalConfig(),
+          largeModelReasoningEffort: value as
+            | 'low'
+            | 'medium'
+            | 'high'
+            | undefined,
+        }
         saveGlobalConfig(config)
         setGlobalConfig(config)
       },
@@ -348,7 +364,7 @@ export function Config({ onClose }: Props): React.ReactNode {
           setInputError('Error processing input')
         }
       }
-      
+
       return
     }
 
@@ -443,11 +459,15 @@ export function Config({ onClose }: Props): React.ReactNode {
     const setting = settings[selectedIndex]
     if (setting?.type === 'apiKeys') {
       if (key.leftArrow) {
-        setSelectedKeyIndex(prev => prev === null ? setting.value.length - 1 : Math.max(0, prev - 1))
+        setSelectedKeyIndex(prev =>
+          prev === null ? setting.value.length - 1 : Math.max(0, prev - 1),
+        )
         return
       }
       if (key.rightArrow) {
-        setSelectedKeyIndex(prev => prev === null ? 0 : Math.min(setting.value.length - 1, prev + 1))
+        setSelectedKeyIndex(prev =>
+          prev === null ? 0 : Math.min(setting.value.length - 1, prev + 1),
+        )
         return
       }
       if ((key.backspace || key.delete) && selectedKeyIndex !== null) {
@@ -462,23 +482,23 @@ export function Config({ onClose }: Props): React.ReactNode {
     }
 
     const moveSelection = (direction: -1 | 1) => {
-      let newIndex = selectedIndex;
-    
+      let newIndex = selectedIndex
+
       while (true) {
-        newIndex += direction;
-    
-        if (newIndex < 0 || newIndex >= settings.length) return;
-    
+        newIndex += direction
+
+        if (newIndex < 0 || newIndex >= settings.length) return
+
         if (!settings[newIndex].disabled) {
-          setSelectedIndex(newIndex);
+          setSelectedIndex(newIndex)
           setSelectedKeyIndex(null)
-          return;
+          return
         }
       }
-    };
-    
-    if (key.upArrow) moveSelection(-1);
-    if (key.downArrow) moveSelection(1);
+    }
+
+    if (key.upArrow) moveSelection(-1)
+    if (key.downArrow) moveSelection(1)
   })
 
   return (
@@ -503,43 +523,64 @@ export function Config({ onClose }: Props): React.ReactNode {
             <Box key={setting.id} flexDirection="column">
               <Box>
                 <Box width={44}>
-                  <Text color={isSelected ? 'blue' : undefined} dimColor={setting.disabled ? true : undefined}>
+                  <Text
+                    color={isSelected ? 'blue' : undefined}
+                    dimColor={setting.disabled ? true : undefined}
+                  >
                     {isSelected ? figures.pointer : ' '} {setting.label}
                   </Text>
                 </Box>
                 <Box>
                   {setting.type === 'boolean' ? (
-                    <Text color={isSelected ? 'blue' : undefined} dimColor={setting.disabled ? true : undefined}>
+                    <Text
+                      color={isSelected ? 'blue' : undefined}
+                      dimColor={setting.disabled ? true : undefined}
+                    >
                       {setting.value.toString()}
                     </Text>
                   ) : setting.type === 'string' ? (
                     isEditing ? (
                       <Box>
                         <Text backgroundColor="blue" color="white">
-                          {currentInput || ' '}<Text color="white">_</Text>
+                          {currentInput || ' '}
+                          <Text color="white">_</Text>
                         </Text>
                         {inputError && <Text color="red"> {inputError}</Text>}
                       </Box>
                     ) : (
-                      <Text color={isSelected ? 'blue' : undefined} dimColor={setting.disabled ? true : undefined}>
-                        {setting.value ? normalizeApiKeyForConfig(setting.value) : '(not set)'} {isSelected ? '[Enter to edit]' : ''}
+                      <Text
+                        color={isSelected ? 'blue' : undefined}
+                        dimColor={setting.disabled ? true : undefined}
+                      >
+                        {setting.value
+                          ? normalizeApiKeyForConfig(setting.value)
+                          : '(not set)'}{' '}
+                        {isSelected ? '[Enter to edit]' : ''}
                       </Text>
                     )
                   ) : setting.type === 'number' ? (
                     isEditing ? (
                       <Box>
                         <Text backgroundColor="blue" color="white">
-                          {currentInput || ' '}<Text color="white">_</Text>
+                          {currentInput || ' '}
+                          <Text color="white">_</Text>
                         </Text>
                         {inputError && <Text color="red"> {inputError}</Text>}
                       </Box>
                     ) : (
-                      <Text color={isSelected ? 'blue' : undefined} dimColor={setting.disabled ? true : undefined}>
-                        {setting.value ? setting.value : '(not set)'} {isSelected ? '[Enter to edit]' : ''}
+                      <Text
+                        color={isSelected ? 'blue' : undefined}
+                        dimColor={setting.disabled ? true : undefined}
+                      >
+                        {setting.value ? setting.value : '(not set)'}{' '}
+                        {isSelected ? '[Enter to edit]' : ''}
                       </Text>
                     )
                   ) : setting.type === 'enum' ? (
-                    <Text color={isSelected ? 'blue' : undefined} dimColor={setting.disabled ? true : undefined}>
+                    <Text
+                      color={isSelected ? 'blue' : undefined}
+                      dimColor={setting.disabled ? true : undefined}
+                    >
                       {setting.value}
                     </Text>
                   ) : setting.type === 'apiKeys' ? (
@@ -547,8 +588,14 @@ export function Config({ onClose }: Props): React.ReactNode {
                       <Box flexDirection="column">
                         {setting.value.map((key, idx) => (
                           <Box key={`${setting.id}-${idx}`}>
-                            <Text 
-                              color={isSelected && selectedKeyIndex === idx ? 'red' : isSelected ? 'blue' : undefined} 
+                            <Text
+                              color={
+                                isSelected && selectedKeyIndex === idx
+                                  ? 'red'
+                                  : isSelected
+                                    ? 'blue'
+                                    : undefined
+                              }
                               dimColor={setting.disabled ? true : undefined}
                             >
                               {normalizeApiKeyForConfig(key)}
@@ -558,16 +605,19 @@ export function Config({ onClose }: Props): React.ReactNode {
                         {isEditing && (
                           <Box>
                             <Text backgroundColor="blue" color="white">
-                              {currentInput || ' '}<Text color="white">_</Text>
+                              {currentInput || ' '}
+                              <Text color="white">_</Text>
                             </Text>
-                            {inputError && <Text color="red"> {inputError}</Text>}
+                            {inputError && (
+                              <Text color="red"> {inputError}</Text>
+                            )}
                           </Box>
                         )}
                       </Box>
                       {isSelected && !isEditing && (
                         <Text dimColor>
-                          {selectedKeyIndex !== null 
-                            ? '[←/→ to select key, Delete/Backspace to remove]' 
+                          {selectedKeyIndex !== null
+                            ? '[←/→ to select key, Delete/Backspace to remove]'
                             : '[Enter to add new key, ←/→ to select key]'}
                         </Text>
                       )}
@@ -582,7 +632,10 @@ export function Config({ onClose }: Props): React.ReactNode {
       <Box marginLeft={3}>
         <Text dimColor>
           {editingString ? (
-            <>Type to edit · Paste with terminal paste · Enter to save · Esc to cancel</>
+            <>
+              Type to edit · Paste with terminal paste · Enter to save · Esc to
+              cancel
+            </>
           ) : exitState.pending ? (
             <>Press {exitState.keyName} again to exit</>
           ) : (

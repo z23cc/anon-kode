@@ -98,12 +98,24 @@ export async function getMaxThinkingTokens(
   return 0
 }
 
-
-export async function getReasoningEffort(modelType: 'large' | 'small', messages: Message[]): Promise<'low' | 'medium' | 'high' | null> {
+export async function getReasoningEffort(
+  modelType: 'large' | 'small',
+  messages: Message[],
+): Promise<'low' | 'medium' | 'high' | null> {
   const thinkingTokens = await getMaxThinkingTokens(messages)
   const config = getGlobalConfig()
-  const _maxEffort = modelType === 'large' ? config.largeModelReasoningEffort : config.smallModelReasoningEffort
-  const maxEffort = _maxEffort === 'high' ? 2 : _maxEffort === 'medium' ? 1 : _maxEffort === 'low' ? 0 : null
+  const _maxEffort =
+    modelType === 'large'
+      ? config.largeModelReasoningEffort
+      : config.smallModelReasoningEffort
+  const maxEffort =
+    _maxEffort === 'high'
+      ? 2
+      : _maxEffort === 'medium'
+        ? 1
+        : _maxEffort === 'low'
+          ? 0
+          : null
   if (!maxEffort) {
     return null
   }

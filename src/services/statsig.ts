@@ -90,9 +90,7 @@ export function logEvent(
     }
 
     // Debug logging when debug mode is enabled
-    if (
-      (process.argv.includes('--debug') || process.argv.includes('-d'))
-    ) {
+    if (process.argv.includes('--debug') || process.argv.includes('-d')) {
       console.log(
         chalk.dim(
           `[DEBUG-ONLY] Statsig event: ${eventName} ${JSON.stringify(metadata, null, 0)}`,
@@ -109,7 +107,7 @@ export function logEvent(
 }
 
 export const checkGate = memoize(async (gateName: string): Promise<boolean> => {
-  return true;
+  return true
   // if (env.isCI || process.env.NODE_ENV === 'test') {
   //   return false
   // }
@@ -122,7 +120,7 @@ export const checkGate = memoize(async (gateName: string): Promise<boolean> => {
 })
 
 export const useStatsigGate = (gateName: string, defaultValue = false) => {
-  return true;
+  return true
   // const [gateValue, setGateValue] = React.useState(defaultValue)
   // React.useEffect(() => {
   //   checkGate(gateName).then(setGateValue)
@@ -136,7 +134,7 @@ export function getGateValues(): Record<string, boolean> {
 
 export const getExperimentValue = memoize(
   async <T>(experimentName: string, defaultValue: T): Promise<T> => {
-    return defaultValue;
+    return defaultValue
     // if (env.isCI || process.env.NODE_ENV === 'test') {
     //   return defaultValue
     // }
@@ -157,7 +155,7 @@ export const getDynamicConfig = async <T>(
   configName: string,
   defaultValue: T,
 ): Promise<T> => {
-  return defaultValue;
+  return defaultValue
   // if (env.isCI || process.env.NODE_ENV === 'test') {
   //   return defaultValue
   // }

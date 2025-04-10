@@ -138,7 +138,8 @@ export function AutoUpdater({
       {(autoUpdaterResult?.status === 'install_failed' ||
         autoUpdaterResult?.status === 'no_permissions') && (
         <Text color={theme.error}>
-          ✗ Auto-update failed &middot; Try <Text bold>{PRODUCT_COMMAND} doctor</Text> or{' '}
+          ✗ Auto-update failed &middot; Try{' '}
+          <Text bold>{PRODUCT_COMMAND} doctor</Text> or{' '}
           <Text bold>npm i -g {MACRO.PACKAGE_URL}</Text>
         </Text>
       )}

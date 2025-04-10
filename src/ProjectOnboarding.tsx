@@ -106,7 +106,8 @@ export default function ProjectOnboarding({
                 items.push(
                   <OrderedList.Item key="claudemd">
                     <Text color={theme.secondaryText}>
-                      Run <Text color={theme.text}>/init</Text> to create a&nbsp;
+                      Run <Text color={theme.text}>/init</Text> to create
+                      a&nbsp;
                       {PROJECT_FILE} file with instructions for {PRODUCT_NAME}.
                     </Text>
                   </OrderedList.Item>,

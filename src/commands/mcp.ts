@@ -14,7 +14,7 @@ const mcp = {
     const servers = listMCPServers()
     const clients = await getClients()
     const theme = getTheme()
-    
+
     if (Object.keys(servers).length === 0) {
       return `⎿  No MCP servers configured. Run \`${PRODUCT_COMMAND} mcp\` to learn about how to configure MCP servers.`
     }
@@ -25,16 +25,13 @@ const mcp = {
       .map(client => {
         const isConnected = client.type === 'connected'
         const status = isConnected ? 'connected' : 'disconnected'
-        const coloredStatus = isConnected 
+        const coloredStatus = isConnected
           ? chalk.hex(theme.success)(status)
           : chalk.hex(theme.error)(status)
         return `⎿  • ${client.name}: ${coloredStatus}`
       })
 
-    return [
-      '⎿  MCP Server Status',
-      ...serverStatusLines
-    ].join('\n')
+    return ['⎿  MCP Server Status', ...serverStatusLines].join('\n')
   },
   userFacingName() {
     return 'mcp'

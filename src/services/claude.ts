@@ -10,7 +10,13 @@ import 'dotenv/config'
 import { addToTotalCost } from '../cost-tracker'
 import type { AssistantMessage, UserMessage } from '../query'
 import { Tool } from '../Tool'
-import { getAnthropicApiKey, getOrCreateUserID, getGlobalConfig, getActiveApiKey, markApiKeyAsFailed } from '../utils/config'
+import {
+  getAnthropicApiKey,
+  getOrCreateUserID,
+  getGlobalConfig,
+  getActiveApiKey,
+  markApiKeyAsFailed,
+} from '../utils/config'
 import { logError, SESSION_ID } from '../utils/log'
 import { USER_AGENT } from '../utils/http'
 import {
@@ -36,7 +42,6 @@ import { ContentBlock } from '@anthropic-ai/sdk/resources/messages/messages'
 import { nanoid } from 'nanoid'
 import { getCompletion } from './openai'
 import { getReasoningEffort } from '../utils/thinking'
-
 
 interface StreamResponse extends APIMessage {
   ttftMs?: number
@@ -208,18 +213,28 @@ export async function verifyApiKey(apiKey: string): Promise<boolean> {
   }
 }
 
-function convertAnthropicMessagesToOpenAIMessages(messages: (UserMessage | AssistantMessage)[]): (OpenAI.ChatCompletionMessageParam | OpenAI.ChatCompletionToolMessageParam)[] {
-  const openaiMessages: (OpenAI.ChatCompletionMessageParam | OpenAI.ChatCompletionToolMessageParam)[] = []
-  
+function convertAnthropicMessagesToOpenAIMessages(
+  messages: (UserMessage | AssistantMessage)[],
+): (
+  | OpenAI.ChatCompletionMessageParam
+  | OpenAI.ChatCompletionToolMessageParam
+)[] {
+  const openaiMessages: (
+    | OpenAI.ChatCompletionMessageParam
+    | OpenAI.ChatCompletionToolMessageParam
+  )[] = []
+
   const toolResults: Record<string, OpenAI.ChatCompletionToolMessageParam> = {}
 
   for (const message of messages) {
     let contentBlocks = []
     if (typeof message.message.content === 'string') {
-      contentBlocks = [{
-        type: 'text',
-        text: message.message.content,
-      }]
+      contentBlocks = [
+        {
+          type: 'text',
+          text: message.message.content,
+        },
+      ]
     } else if (!Array.isArray(message.message.content)) {
       contentBlocks = [message.message.content]
     } else {
@@ -227,32 +242,34 @@ function convertAnthropicMessagesToOpenAIMessages(messages: (UserMessage | Assis
     }
 
     for (const block of contentBlocks) {
-      if(block.type === 'text') {
-          openaiMessages.push({
-            role: message.message.role,
-            content: block.text,
-          })
-      } else if(block.type === 'tool_use') {
-          openaiMessages.push({
-            role: 'assistant',
-            content: undefined,
-            tool_calls: [{
+      if (block.type === 'text') {
+        openaiMessages.push({
+          role: message.message.role,
+          content: block.text,
+        })
+      } else if (block.type === 'tool_use') {
+        openaiMessages.push({
+          role: 'assistant',
+          content: undefined,
+          tool_calls: [
+            {
               type: 'function',
               function: {
                 name: block.name,
                 arguments: JSON.stringify(block.input),
               },
               id: block.id,
-            }],
-          })
-      } else if(block.type === 'tool_result') {
+            },
+          ],
+        })
+      } else if (block.type === 'tool_result') {
         // Ensure content is always a string for role:tool messages
-        let toolContent = block.content;
+        let toolContent = block.content
         if (typeof toolContent !== 'string') {
           // Convert content to string if it's not already
-          toolContent = JSON.stringify(toolContent);
+          toolContent = JSON.stringify(toolContent)
         }
-        
+
         toolResults[block.tool_use_id] = {
           role: 'tool',
           content: toolContent,
@@ -262,90 +279,96 @@ function convertAnthropicMessagesToOpenAIMessages(messages: (UserMessage | Assis
     }
   }
 
-  const finalMessages: (OpenAI.ChatCompletionMessageParam | OpenAI.ChatCompletionToolMessageParam)[] = []
-  
-  for(const message of openaiMessages) {
+  const finalMessages: (
+    | OpenAI.ChatCompletionMessageParam
+    | OpenAI.ChatCompletionToolMessageParam
+  )[] = []
+
+  for (const message of openaiMessages) {
     finalMessages.push(message)
-    
-    if('tool_calls' in message && message.tool_calls) {
-      for(const toolCall of message.tool_calls) {
-        if(toolResults[toolCall.id]) {
+
+    if ('tool_calls' in message && message.tool_calls) {
+      for (const toolCall of message.tool_calls) {
+        if (toolResults[toolCall.id]) {
           finalMessages.push(toolResults[toolCall.id])
         }
       }
     }
   }
-  
+
   return finalMessages
 }
 
-function messageReducer(previous: OpenAI.ChatCompletionMessage, item: OpenAI.ChatCompletionChunk): OpenAI.ChatCompletionMessage {
+function messageReducer(
+  previous: OpenAI.ChatCompletionMessage,
+  item: OpenAI.ChatCompletionChunk,
+): OpenAI.ChatCompletionMessage {
   const reduce = (acc: any, delta: OpenAI.ChatCompletionChunk.Choice.Delta) => {
-    acc = { ...acc };
+    acc = { ...acc }
     for (const [key, value] of Object.entries(delta)) {
       if (acc[key] === undefined || acc[key] === null) {
-        acc[key] = value;
+        acc[key] = value
         //  OpenAI.Chat.Completions.ChatCompletionMessageToolCall does not have a key, .index
         if (Array.isArray(acc[key])) {
           for (const arr of acc[key]) {
-            delete arr.index;
+            delete arr.index
           }
         }
       } else if (typeof acc[key] === 'string' && typeof value === 'string') {
-        acc[key] += value;
+        acc[key] += value
       } else if (typeof acc[key] === 'number' && typeof value === 'number') {
-        acc[key] = value;
+        acc[key] = value
       } else if (Array.isArray(acc[key]) && Array.isArray(value)) {
-        const accArray = acc[key];
+        const accArray = acc[key]
         for (let i = 0; i < value.length; i++) {
-          const { index, ...chunkTool } = value[i];
+          const { index, ...chunkTool } = value[i]
           if (index - accArray.length > 1) {
             throw new Error(
               `Error: An array has an empty value when tool_calls are constructed. tool_calls: ${accArray}; tool: ${value}`,
-            );
+            )
           }
-          accArray[index] = reduce(accArray[index], chunkTool);
+          accArray[index] = reduce(accArray[index], chunkTool)
         }
       } else if (typeof acc[key] === 'object' && typeof value === 'object') {
-        acc[key] = reduce(acc[key], value);
+        acc[key] = reduce(acc[key], value)
       }
     }
-    return acc;
-  };
+    return acc
+  }
 
-  const choice = item.choices?.[0];
+  const choice = item.choices?.[0]
   if (!choice) {
     // chunk contains information about usage and token counts
-    return previous;
+    return previous
   }
-  return reduce(previous, choice.delta) as OpenAI.ChatCompletionMessage;
+  return reduce(previous, choice.delta) as OpenAI.ChatCompletionMessage
 }
 async function handleMessageStream(
   stream: ChatCompletionStream,
 ): Promise<OpenAI.ChatCompletion> {
   const streamStartTime = Date.now()
   let ttftMs: number | undefined
-  
+
   let message = {} as OpenAI.ChatCompletionMessage
 
   let id, model, created, object, usage
   for await (const chunk of stream) {
-    if(!id) {
+    if (!id) {
       id = chunk.id
     }
-    if(!model) {
+    if (!model) {
       model = chunk.model
     }
-    if(!created) {
+    if (!created) {
       created = chunk.created
     }
-    if(!object) {
+    if (!object) {
       object = chunk.object
     }
-    if(!usage) {
+    if (!usage) {
       usage = chunk.usage
     }
-    message = messageReducer(message, chunk);
+    message = messageReducer(message, chunk)
     if (chunk?.choices?.[0]?.delta?.content) {
       ttftMs = Date.now() - streamStartTime
     }
@@ -355,11 +378,12 @@ async function handleMessageStream(
     created,
     model,
     object,
-    choices: [ { 
-      index: 0, 
-      message, 
-      finish_reason: 'stop',
-      logprobs: undefined,
+    choices: [
+      {
+        index: 0,
+        message,
+        finish_reason: 'stop',
+        logprobs: undefined,
       },
     ],
     usage,
@@ -369,7 +393,7 @@ async function handleMessageStream(
 function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   let contentBlocks: ContentBlock[] = []
   const message = response.choices?.[0]?.message
-  if(!message) {
+  if (!message) {
     logEvent('weird_response', {
       response: JSON.stringify(response),
     })
@@ -381,9 +405,9 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
       usage: response.usage,
     }
   }
-  
-  if(message?.tool_calls) {
-    for(const toolCall of message.tool_calls) {
+
+  if (message?.tool_calls) {
+    for (const toolCall of message.tool_calls) {
       const tool = toolCall.function
       const toolName = tool.name
       let toolArgs = {}
@@ -402,8 +426,7 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
     }
   }
 
-
-  if((message as any).reasoning) {
+  if ((message as any).reasoning) {
     contentBlocks.push({
       type: 'thinking',
       thinking: (message as any).reasoning,
@@ -411,7 +434,7 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
     })
   }
 
-  // NOTE: For deepseek api, the key for its returned reasoning process is reasoning_content 
+  // NOTE: For deepseek api, the key for its returned reasoning process is reasoning_content
   if ((message as any).reasoning_content) {
     contentBlocks.push({
       type: 'thinking',
@@ -428,7 +451,6 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
     })
   }
 
-
   const finalMessage = {
     role: 'assistant',
     content: contentBlocks,
@@ -440,12 +462,15 @@ function convertOpenAIResponseToAnthropic(response: OpenAI.ChatCompletion) {
   return finalMessage
 }
 
-let anthropicClient: Anthropic | AnthropicBedrock | AnthropicVertex | null = null
+let anthropicClient: Anthropic | AnthropicBedrock | AnthropicVertex | null =
+  null
 
 /**
  * Get the Anthropic client, creating it if it doesn't exist
  */
-export function getAnthropicClient(model?: string): Anthropic | AnthropicBedrock | AnthropicVertex {
+export function getAnthropicClient(
+  model?: string,
+): Anthropic | AnthropicBedrock | AnthropicVertex {
   if (anthropicClient) {
     return anthropicClient
   }
@@ -670,7 +695,15 @@ async function querySonnetWithPromptCaching(
     prependCLISysprompt: boolean
   },
 ): Promise<AssistantMessage> {
-  return queryOpenAI('large', messages, systemPrompt, maxThinkingTokens, tools, signal, options)
+  return queryOpenAI(
+    'large',
+    messages,
+    systemPrompt,
+    maxThinkingTokens,
+    tools,
+    signal,
+    options,
+  )
 }
 
 function getAssistantMessageFromError(error: unknown): AssistantMessage {
@@ -690,7 +723,7 @@ function getAssistantMessageFromError(error: unknown): AssistantMessage {
     return createAssistantAPIErrorMessage(INVALID_API_KEY_ERROR_MESSAGE)
   }
   if (error instanceof Error) {
-    if(process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development') {
       console.log(error)
     }
     return createAssistantAPIErrorMessage(
@@ -723,10 +756,10 @@ async function queryOpenAI(
     prependCLISysprompt: boolean
   },
 ): Promise<AssistantMessage> {
-
   //const anthropic = await getAnthropicClient(options.model)
   const config = getGlobalConfig()
-  const model = modelType === 'large' ? config.largeModelName : config.smallModelName
+  const model =
+    modelType === 'large' ? config.largeModelName : config.smallModelName
   // Prepend system prompt block for easy API identification
   if (options?.prependCLISysprompt) {
     // Log stats about first block for analyzing prefix matching config (see https://console.statsig.com/4aF3Ewatb6xPVpCwxb5nA3/dynamic_configs/claude_cli_system_prompt_prefixes)
@@ -753,26 +786,33 @@ async function queryOpenAI(
   )
 
   const toolSchemas = await Promise.all(
-    tools.map(async _ => ({
-      type: 'function',
-      function: {
-        name: _.name,
-        description: await _.prompt({
-          dangerouslySkipPermissions: options?.dangerouslySkipPermissions,
-        }),
-        // Use tool's JSON schema directly if provided, otherwise convert Zod schema
-        parameters: ('inputJSONSchema' in _ && _.inputJSONSchema
-          ? _.inputJSONSchema
-          : zodToJsonSchema(_.inputSchema)) ,
-      }})as OpenAI.ChatCompletionTool) ,
+    tools.map(
+      async _ =>
+        ({
+          type: 'function',
+          function: {
+            name: _.name,
+            description: await _.prompt({
+              dangerouslySkipPermissions: options?.dangerouslySkipPermissions,
+            }),
+            // Use tool's JSON schema directly if provided, otherwise convert Zod schema
+            parameters:
+              'inputJSONSchema' in _ && _.inputJSONSchema
+                ? _.inputJSONSchema
+                : zodToJsonSchema(_.inputSchema),
+          },
+        }) as OpenAI.ChatCompletionTool,
+    ),
   )
 
+  const openaiSystem = system.map(
+    s =>
+      ({
+        role: 'system',
+        content: s.text,
+      }) as OpenAI.ChatCompletionMessageParam,
+  )
 
-  const openaiSystem = system.map(s => ({
-    role: 'system',
-    content: s.text,
-  }) as OpenAI.ChatCompletionMessageParam)
-  
   const openaiMessages = convertAnthropicMessagesToOpenAIMessages(messages)
   const startIncludingRetries = Date.now()
 
@@ -790,19 +830,19 @@ async function queryOpenAI(
         messages: [...openaiSystem, ...openaiMessages],
         temperature: MAIN_QUERY_TEMPERATURE,
       }
-      if(config.stream) {
-        (opts as OpenAI.ChatCompletionCreateParams).stream = true
+      if (config.stream) {
+        ;(opts as OpenAI.ChatCompletionCreateParams).stream = true
         opts.stream_options = {
           include_usage: true,
         }
       }
 
-      if(toolSchemas.length > 0) {
+      if (toolSchemas.length > 0) {
         opts.tools = toolSchemas
         opts.tool_choice = 'auto'
       }
       const reasoningEffort = await getReasoningEffort(modelType, messages)
-      if(reasoningEffort) {
+      if (reasoningEffort) {
         logEvent('debug_reasoning_effort', {
           effort: reasoningEffort,
         })
@@ -810,7 +850,7 @@ async function queryOpenAI(
       }
       const s = await getCompletion(modelType, opts)
       let finalResponse
-      if(opts.stream) {
+      if (opts.stream) {
         finalResponse = await handleMessageStream(s as ChatCompletionStream)
       } else {
         finalResponse = s
@@ -828,8 +868,10 @@ async function queryOpenAI(
 
   const inputTokens = response.usage?.prompt_tokens ?? 0
   const outputTokens = response.usage?.completion_tokens ?? 0
-  const cacheReadInputTokens = response.usage?.prompt_token_details?.cached_tokens ?? 0
-  const cacheCreationInputTokens = response.usage?.prompt_token_details?.cached_tokens ?? 0
+  const cacheReadInputTokens =
+    response.usage?.prompt_token_details?.cached_tokens ?? 0
+  const cacheCreationInputTokens =
+    response.usage?.prompt_token_details?.cached_tokens ?? 0
   const costUSD =
     (inputTokens / 1_000_000) * SONNET_COST_PER_MILLION_INPUT_TOKENS +
     (outputTokens / 1_000_000) * SONNET_COST_PER_MILLION_OUTPUT_TOKENS +
@@ -848,7 +890,7 @@ async function queryOpenAI(
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         cache_read_input_tokens: cacheReadInputTokens,
-        cache_creation_input_tokens: 0
+        cache_creation_input_tokens: 0,
       },
     },
     costUSD,
@@ -893,9 +935,9 @@ export async function queryHaiku({
           message: { role: 'user', content: userPrompt },
           type: 'user',
           uuid: randomUUID(),
-        }
+        },
       ] as (UserMessage | AssistantMessage)[]
-      return queryOpenAI('small', messages, systemPrompt, 0, [], signal)      
+      return queryOpenAI('small', messages, systemPrompt, 0, [], signal)
     },
   )
 }
@@ -909,8 +951,8 @@ function getMaxTokensForModelType(modelType: 'large' | 'small'): number {
   } else {
     maxTokens = config.smallModelMaxTokens
   }
-  
-  if(!maxTokens && config.maxTokens) {
+
+  if (!maxTokens && config.maxTokens) {
     maxTokens = config.maxTokens
   }
 

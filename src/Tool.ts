@@ -6,4 +6,4 @@ export interface Tool {
   inputSchema: z.ZodObject<any>
   inputJSONSchema?: Record<string, unknown>
   prompt: (options: { dangerouslySkipPermissions: boolean }) => Promise<string>
-} 
+}

@@ -87,7 +87,9 @@ export function PermissionRequest({
   const toolName = toolUseConfirm.tool.userFacingName(
     toolUseConfirm.input as never,
   )
-  useNotifyAfterTimeout(`${PRODUCT_NAME} needs your permission to use ${toolName}`)
+  useNotifyAfterTimeout(
+    `${PRODUCT_NAME} needs your permission to use ${toolName}`,
+  )
 
   const PermissionComponent = permissionComponentForTool(toolUseConfirm.tool)
 

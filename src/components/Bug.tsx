@@ -130,7 +130,11 @@ export function Bug({ onDone }: Props): React.ReactNode {
     }
 
     if (step === 'consent' && (key.return || input === ' ')) {
-      const issueUrl = createGitHubIssueUrl(feedbackId, description.slice(0, 80), description)
+      const issueUrl = createGitHubIssueUrl(
+        feedbackId,
+        description.slice(0, 80),
+        description,
+      )
       void openBrowser(issueUrl)
       onDone('<bash-stdout>Bug report submitted</bash-stdout>')
     }
@@ -153,7 +157,9 @@ export function Bug({ onDone }: Props): React.ReactNode {
         </Text>
         {step === 'userInput' && (
           <Box flexDirection="column" gap={1}>
-            <Text>Describe the issue below and copy/paste any errors you see:</Text>
+            <Text>
+              Describe the issue below and copy/paste any errors you see:
+            </Text>
             <TextInput
               value={description}
               onChange={setDescription}

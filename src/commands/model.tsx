@@ -16,7 +16,7 @@ export function userFacingName(): string {
 
 export async function call(
   onDone: (result?: string) => void,
-  { abortController }: { abortController?: AbortController }
+  { abortController }: { abortController?: AbortController },
 ): Promise<React.ReactNode> {
   enableConfigs()
   abortController?.abort?.()
@@ -27,4 +27,4 @@ export async function call(
       }}
     />
   )
-} 
+}

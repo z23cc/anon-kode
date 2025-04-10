@@ -18,8 +18,8 @@ import {
   MessageParam,
   ToolResultBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import {
   CallToolResultSchema,

@@ -454,7 +454,9 @@ ${commandList}`,
   // claude config
   const config = program
     .command('config')
-    .description(`Manage configuration (eg. ${PRODUCT_COMMAND} config set -g theme dark)`)
+    .description(
+      `Manage configuration (eg. ${PRODUCT_COMMAND} config set -g theme dark)`,
+    )
 
   config
     .command('get <key>')
@@ -600,105 +602,142 @@ ${commandList}`,
       try {
         // If name is not provided, start interactive wizard
         if (!name) {
-          console.log("Interactive wizard mode: Enter the server details")
-          const { createInterface } = await import('readline');
+          console.log('Interactive wizard mode: Enter the server details')
+          const { createInterface } = await import('readline')
           const rl = createInterface({
             input: process.stdin,
-            output: process.stdout
-          });
+            output: process.stdout,
+          })
 
-          const question = (query: string) => new Promise<string>(resolve => rl.question(query, resolve));
+          const question = (query: string) =>
+            new Promise<string>(resolve => rl.question(query, resolve))
 
           // Get server name
-          const serverName = await question('Server name: ');
+          const serverName = await question('Server name: ')
           if (!serverName) {
-            console.error('Error: Server name is required');
-            rl.close();
-            process.exit(1);
+            console.error('Error: Server name is required')
+            rl.close()
+            process.exit(1)
           }
 
           // Get server type
-          const serverType = await question('Server type (stdio or sse) [stdio]: ');
-          const type = serverType && ['stdio', 'sse'].includes(serverType) ? serverType : 'stdio';
+          const serverType = await question(
+            'Server type (stdio or sse) [stdio]: ',
+          )
+          const type =
+            serverType && ['stdio', 'sse'].includes(serverType)
+              ? serverType
+              : 'stdio'
 
           // Get command or URL
-          const prompt = type === 'stdio' ? 'Command: ' : 'URL: ';
-          const commandOrUrlValue = await question(prompt);
+          const prompt = type === 'stdio' ? 'Command: ' : 'URL: '
+          const commandOrUrlValue = await question(prompt)
           if (!commandOrUrlValue) {
-            console.error(`Error: ${type === 'stdio' ? 'Command' : 'URL'} is required`);
-            rl.close();
-            process.exit(1);
+            console.error(
+              `Error: ${type === 'stdio' ? 'Command' : 'URL'} is required`,
+            )
+            rl.close()
+            process.exit(1)
           }
 
           // Get args and env if stdio
-          let serverArgs: string[] = [];
-          let serverEnv: Record<string, string> = {};
+          let serverArgs: string[] = []
+          let serverEnv: Record<string, string> = {}
 
           if (type === 'stdio') {
-            const argsStr = await question('Command arguments (space-separated): ');
-            serverArgs = argsStr ? argsStr.split(' ').filter(Boolean) : [];
+            const argsStr = await question(
+              'Command arguments (space-separated): ',
+            )
+            serverArgs = argsStr ? argsStr.split(' ').filter(Boolean) : []
 
-            const envStr = await question('Environment variables (format: KEY1=value1,KEY2=value2): ');
+            const envStr = await question(
+              'Environment variables (format: KEY1=value1,KEY2=value2): ',
+            )
             if (envStr) {
-              const envPairs = envStr.split(',').map(pair => pair.trim());
-              serverEnv = parseEnvVars(envPairs.map(pair => pair));
+              const envPairs = envStr.split(',').map(pair => pair.trim())
+              serverEnv = parseEnvVars(envPairs.map(pair => pair))
             }
           }
 
           // Get scope
-          const scopeStr = await question('Configuration scope (project or global) [project]: ');
-          const serverScope = ensureConfigScope(scopeStr || 'project');
+          const scopeStr = await question(
+            'Configuration scope (project or global) [project]: ',
+          )
+          const serverScope = ensureConfigScope(scopeStr || 'project')
 
-          rl.close();
+          rl.close()
 
           // Add the server
           if (type === 'sse') {
-            logEvent('tengu_mcp_add', { name: serverName, type: 'sse', scope: serverScope });
-            addMcpServer(serverName, { type: 'sse', url: commandOrUrlValue }, serverScope);
-            console.log(`Added SSE MCP server ${serverName} with URL ${commandOrUrlValue} to ${serverScope} config`);
-          } else {
-            logEvent('tengu_mcp_add', { name: serverName, type: 'stdio', scope: serverScope });
+            logEvent('tengu_mcp_add', {
+              name: serverName,
+              type: 'sse',
+              scope: serverScope,
+            })
             addMcpServer(
               serverName,
-              { type: 'stdio', command: commandOrUrlValue, args: serverArgs, env: serverEnv },
-              serverScope
-            );
+              { type: 'sse', url: commandOrUrlValue },
+              serverScope,
+            )
+            console.log(
+              `Added SSE MCP server ${serverName} with URL ${commandOrUrlValue} to ${serverScope} config`,
+            )
+          } else {
+            logEvent('tengu_mcp_add', {
+              name: serverName,
+              type: 'stdio',
+              scope: serverScope,
+            })
+            addMcpServer(
+              serverName,
+              {
+                type: 'stdio',
+                command: commandOrUrlValue,
+                args: serverArgs,
+                env: serverEnv,
+              },
+              serverScope,
+            )
 
             console.log(
-              `Added stdio MCP server ${serverName} with command: ${commandOrUrlValue} ${serverArgs.join(' ')} to ${serverScope} config`
-            );
+              `Added stdio MCP server ${serverName} with command: ${commandOrUrlValue} ${serverArgs.join(' ')} to ${serverScope} config`,
+            )
           }
         } else if (name && commandOrUrl) {
           // Regular non-interactive flow
-          const scope = ensureConfigScope(options.scope);
+          const scope = ensureConfigScope(options.scope)
 
           // Check if it's an SSE URL (starts with http:// or https://)
           if (commandOrUrl.match(/^https?:\/\//)) {
-            logEvent('tengu_mcp_add', { name, type: 'sse', scope });
-            addMcpServer(name, { type: 'sse', url: commandOrUrl }, scope);
-            console.log(`Added SSE MCP server ${name} with URL ${commandOrUrl} to ${scope} config`);
+            logEvent('tengu_mcp_add', { name, type: 'sse', scope })
+            addMcpServer(name, { type: 'sse', url: commandOrUrl }, scope)
+            console.log(
+              `Added SSE MCP server ${name} with URL ${commandOrUrl} to ${scope} config`,
+            )
           } else {
-            logEvent('tengu_mcp_add', { name, type: 'stdio', scope });
-            const env = parseEnvVars(options.env);
+            logEvent('tengu_mcp_add', { name, type: 'stdio', scope })
+            const env = parseEnvVars(options.env)
             addMcpServer(
               name,
               { type: 'stdio', command: commandOrUrl, args: args || [], env },
-              scope
-            );
+              scope,
+            )
 
             console.log(
-              `Added stdio MCP server ${name} with command: ${commandOrUrl} ${(args || []).join(' ')} to ${scope} config`
-            );
+              `Added stdio MCP server ${name} with command: ${commandOrUrl} ${(args || []).join(' ')} to ${scope} config`,
+            )
           }
         } else {
-          console.error('Error: Missing required arguments. Either provide no arguments for interactive mode or specify name and command/URL.');
-          process.exit(1);
+          console.error(
+            'Error: Missing required arguments. Either provide no arguments for interactive mode or specify name and command/URL.',
+          )
+          process.exit(1)
         }
 
-        process.exit(0);
+        process.exit(0)
       } catch (error) {
-        console.error((error as Error).message);
-        process.exit(1);
+        console.error((error as Error).message)
+        process.exit(1)
       }
     })
   mcp
@@ -755,51 +794,56 @@ ${commandList}`,
     )
     .action(async (name, jsonStr, options) => {
       try {
-        const scope = ensureConfigScope(options.scope);
+        const scope = ensureConfigScope(options.scope)
 
         // Parse JSON string
-        let serverConfig;
+        let serverConfig
         try {
-          serverConfig = JSON.parse(jsonStr);
+          serverConfig = JSON.parse(jsonStr)
         } catch (e) {
-          console.error('Error: Invalid JSON string');
-          process.exit(1);
+          console.error('Error: Invalid JSON string')
+          process.exit(1)
         }
 
         // Validate the server config
-        if (!serverConfig.type || !['stdio', 'sse'].includes(serverConfig.type)) {
-          console.error('Error: Server type must be "stdio" or "sse"');
-          process.exit(1);
+        if (
+          !serverConfig.type ||
+          !['stdio', 'sse'].includes(serverConfig.type)
+        ) {
+          console.error('Error: Server type must be "stdio" or "sse"')
+          process.exit(1)
         }
 
         if (serverConfig.type === 'sse' && !serverConfig.url) {
-          console.error('Error: SSE server must have a URL');
-          process.exit(1);
+          console.error('Error: SSE server must have a URL')
+          process.exit(1)
         }
 
         if (serverConfig.type === 'stdio' && !serverConfig.command) {
-          console.error('Error: stdio server must have a command');
-          process.exit(1);
+          console.error('Error: stdio server must have a command')
+          process.exit(1)
         }
 
         // Add server with the provided config
-        logEvent('tengu_mcp_add_json', { name, type: serverConfig.type, scope });
-        addMcpServer(name, serverConfig, scope);
+        logEvent('tengu_mcp_add_json', { name, type: serverConfig.type, scope })
+        addMcpServer(name, serverConfig, scope)
 
         if (serverConfig.type === 'sse') {
-          console.log(`Added SSE MCP server ${name} with URL ${serverConfig.url} to ${scope} config`);
+          console.log(
+            `Added SSE MCP server ${name} with URL ${serverConfig.url} to ${scope} config`,
+          )
         } else {
           console.log(
-            `Added stdio MCP server ${name} with command: ${serverConfig.command} ${
-              (serverConfig.args || []).join(' ')
-            } to ${scope} config`
-          );
+            `Added stdio MCP server ${name} with command: ${serverConfig.command} ${(
+              serverConfig.args || []
+            ).join(' ')} to ${scope} config`,
+          )
         }
 
-        process.exit(0);
+        process.exit(0)
       } catch (error) {
-        console.error((error as Error).message);
-        process.exit(1);
+        console.error((error as Error).message)
+        process.exit(1)
       }
     })
 
@@ -835,198 +879,216 @@ ${commandList}`,
   // Import servers from Claude Desktop
   mcp
     .command('add-from-claude-desktop')
-    .description('Import MCP servers from Claude Desktop (Mac, Windows and WSL)')
+    .description(
+      'Import MCP servers from Claude Desktop (Mac, Windows and WSL)',
+    )
     .option(
       '-s, --scope <scope>',
       'Configuration scope (project or global)',
       'project',
     )
-    .action(async (options) => {
+    .action(async options => {
       try {
-        const scope = ensureConfigScope(options.scope);
-        const platform = process.platform;
+        const scope = ensureConfigScope(options.scope)
+        const platform = process.platform
 
         // Import fs and path modules
-        const { existsSync, readFileSync } = await import('fs');
-        const { join } = await import('path');
-        const { exec } = await import('child_process');
+        const { existsSync, readFileSync } = await import('fs')
+        const { join } = await import('path')
+        const { exec } = await import('child_process')
 
         // Determine if running in WSL
-        const isWSL = (platform === 'linux' &&
+        const isWSL =
+          platform === 'linux' &&
           existsSync('/proc/version') &&
-          readFileSync('/proc/version', 'utf-8').toLowerCase().includes('microsoft'));
+          readFileSync('/proc/version', 'utf-8')
+            .toLowerCase()
+            .includes('microsoft')
 
         if (platform !== 'darwin' && platform !== 'win32' && !isWSL) {
-          console.error('Error: This command is only supported on macOS, Windows, and WSL');
-          process.exit(1);
+          console.error(
+            'Error: This command is only supported on macOS, Windows, and WSL',
+          )
+          process.exit(1)
         }
 
         // Get Claude Desktop config path
-        let configPath;
+        let configPath
         if (platform === 'darwin') {
           configPath = join(
             process.env.HOME || '~',
-            'Library/Application Support/Claude/claude_desktop_config.json'
-          );
+            'Library/Application Support/Claude/claude_desktop_config.json',
+          )
         } else if (platform === 'win32') {
           configPath = join(
             process.env.APPDATA || '',
-            'Claude/claude_desktop_config.json'
-          );
+            'Claude/claude_desktop_config.json',
+          )
         } else if (isWSL) {
           // Get Windows username
           const whoamiCommand = await new Promise<string>((resolve, reject) => {
-            exec('powershell.exe -Command "whoami"', (err: Error, stdout: string) => {
-              if (err) reject(err);
-              else resolve(stdout.trim().split('\\').pop() || '');
-            });
-          });
+            exec(
+              'powershell.exe -Command "whoami"',
+              (err: Error, stdout: string) => {
+                if (err) reject(err)
+                else resolve(stdout.trim().split('\\').pop() || '')
+              },
+            )
+          })
 
-          configPath = `/mnt/c/Users/${whoamiCommand}/AppData/Roaming/Claude/claude_desktop_config.json`;
+          configPath = `/mnt/c/Users/${whoamiCommand}/AppData/Roaming/Claude/claude_desktop_config.json`
         }
 
         // Check if config file exists
         if (!existsSync(configPath)) {
-          console.error(`Error: Claude Desktop config file not found at ${configPath}`);
-          process.exit(1);
+          console.error(
+            `Error: Claude Desktop config file not found at ${configPath}`,
+          )
+          process.exit(1)
         }
 
         // Read config file
-        let config;
+        let config
         try {
-          const configContent = readFileSync(configPath, 'utf-8');
-          config = JSON.parse(configContent);
+          const configContent = readFileSync(configPath, 'utf-8')
+          config = JSON.parse(configContent)
         } catch (err) {
-          console.error(`Error reading config file: ${err}`);
-          process.exit(1);
+          console.error(`Error reading config file: ${err}`)
+          process.exit(1)
         }
 
         // Extract MCP servers
-        const mcpServers = config.mcpServers || {};
-        const serverNames = Object.keys(mcpServers);
-        const numServers = serverNames.length;
+        const mcpServers = config.mcpServers || {}
+        const serverNames = Object.keys(mcpServers)
+        const numServers = serverNames.length
 
         if (numServers === 0) {
-          console.log('No MCP servers found in Claude Desktop config');
-          process.exit(0);
+          console.log('No MCP servers found in Claude Desktop config')
+          process.exit(0)
         }
 
         // Create server information for display
         const serversInfo = serverNames.map(name => {
-          const server = mcpServers[name];
-          let description = '';
+          const server = mcpServers[name]
+          let description = ''
 
           if (server.type === 'sse') {
-            description = `SSE: ${server.url}`;
+            description = `SSE: ${server.url}`
           } else {
-            description = `stdio: ${server.command} ${(server.args || []).join(' ')}`;
+            description = `stdio: ${server.command} ${(server.args || []).join(' ')}`
           }
 
-          return { name, description, server };
-        });
+          return { name, description, server }
+        })
 
         // First import all required modules outside the component
         // Import modules separately to avoid any issues
-        const ink = await import('ink');
-        const reactModule = await import('react');
-        const inkjsui = await import('@inkjs/ui');
-        const utilsTheme = await import('../utils/theme');
+        const ink = await import('ink')
+        const reactModule = await import('react')
+        const inkjsui = await import('@inkjs/ui')
+        const utilsTheme = await import('../utils/theme')
 
-        const { render } = ink;
-        const React = reactModule;  // React is already the default export when imported this way
-        const { MultiSelect } = inkjsui;
-        const { Box, Text } = ink;
-        const { getTheme } = utilsTheme;
+        const { render } = ink
+        const React = reactModule // React is already the default export when imported this way
+        const { MultiSelect } = inkjsui
+        const { Box, Text } = ink
+        const { getTheme } = utilsTheme
 
         // Use Ink to render a nice UI for selection
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           // Create a component for the server selection
           function ClaudeDesktopImport() {
-            const { useState } = reactModule;
-            const [isFinished, setIsFinished] = useState(false);
-            const [importResults, setImportResults] = useState<{name: string, success: boolean}[]>([]);
-            const [isImporting, setIsImporting] = useState(false);
-            const theme = getTheme();
+            const { useState } = reactModule
+            const [isFinished, setIsFinished] = useState(false)
+            const [importResults, setImportResults] = useState<
+              { name: string; success: boolean }[]
+            >([])
+            const [isImporting, setIsImporting] = useState(false)
+            const theme = getTheme()
 
             // Function to import selected servers
             const importServers = async (selectedServers: string[]) => {
-              setIsImporting(true);
-              const results = [];
+              setIsImporting(true)
+              const results = []
 
               for (const name of selectedServers) {
                 try {
-                  const server = mcpServers[name];
+                  const server = mcpServers[name]
 
                   // Check if server already exists
-                  const existingServer = getMcpServer(name);
+                  const existingServer = getMcpServer(name)
                   if (existingServer) {
                     // Skip duplicates - we'll handle them in the confirmation step
-                    continue;
+                    continue
                   }
 
-                  addMcpServer(name, server as McpServerConfig, scope);
-                  results.push({ name, success: true });
+                  addMcpServer(name, server as McpServerConfig, scope)
+                  results.push({ name, success: true })
                 } catch (err) {
-                  results.push({ name, success: false });
+                  results.push({ name, success: false })
                 }
               }
 
-              setImportResults(results);
-              setIsImporting(false);
-              setIsFinished(true);
+              setImportResults(results)
+              setIsImporting(false)
+              setIsFinished(true)
 
               // Give time to show results
               setTimeout(() => {
-                resolve();
-              }, 1000);
-            };
+                resolve()
+              }, 1000)
+            }
 
             // Handle confirmation of selections
             const handleConfirm = async (selectedServers: string[]) => {
               // Check for existing servers and confirm overwrite
-              const existingServers = selectedServers.filter(name => getMcpServer(name));
+              const existingServers = selectedServers.filter(name =>
+                getMcpServer(name),
+              )
 
               if (existingServers.length > 0) {
                 // We'll just handle it directly since we have a simple UI
-                const results = [];
+                const results = []
 
                 // Process non-existing servers first
-                const newServers = selectedServers.filter(name => !getMcpServer(name));
+                const newServers = selectedServers.filter(
+                  name => !getMcpServer(name),
+                )
                 for (const name of newServers) {
                   try {
-                    const server = mcpServers[name];
-                    addMcpServer(name, server as McpServerConfig, scope);
-                    results.push({ name, success: true });
+                    const server = mcpServers[name]
+                    addMcpServer(name, server as McpServerConfig, scope)
+                    results.push({ name, success: true })
                   } catch (err) {
-                    results.push({ name, success: false });
+                    results.push({ name, success: false })
                   }
                 }
 
                 // Now handle existing servers by prompting for each one
                 for (const name of existingServers) {
                   try {
-                    const server = mcpServers[name];
+                    const server = mcpServers[name]
                     // Overwrite existing server - in a real interactive UI you'd prompt here
-                    addMcpServer(name, server as McpServerConfig, scope);
-                    results.push({ name, success: true });
+                    addMcpServer(name, server as McpServerConfig, scope)
+                    results.push({ name, success: true })
                   } catch (err) {
-                    results.push({ name, success: false });
+                    results.push({ name, success: false })
                   }
                 }
 
-                setImportResults(results);
-                setIsImporting(false);
-                setIsFinished(true);
+                setImportResults(results)
+                setIsImporting(false)
+                setIsFinished(true)
 
                 // Give time to show results before resolving
                 setTimeout(() => {
-                  resolve();
-                }, 1000);
+                  resolve()
+                }, 1000)
               } else {
                 // No existing servers, proceed with import
-                await importServers(selectedServers);
+                await importServers(selectedServers)
               }
-            };
+            }
 
             return (
               <Box flexDirection="column" padding={1}>
@@ -1035,7 +1097,7 @@ ${commandList}`,
                   borderStyle="round"
                   borderColor={theme.claude}
                   padding={1}
-                  width={"100%"}
+                  width={'100%'}
                 >
                   <Text bold color={theme.claude}>
                     Import MCP Servers from Claude Desktop
@@ -1062,62 +1124,66 @@ ${commandList}`,
                 </Box>
 
                 <Box marginTop={0} marginLeft={3}>
-                  <Text dimColor>Space to select · Enter to confirm · Esc to cancel</Text>
+                  <Text dimColor>
+                    Space to select · Enter to confirm · Esc to cancel
+                  </Text>
                 </Box>
 
                 {isFinished && (
                   <Box marginTop={1}>
                     <Text color={theme.success}>
-                      Successfully imported {importResults.filter(r => r.success).length} MCP server to local config.
+                      Successfully imported{' '}
+                      {importResults.filter(r => r.success).length} MCP server
+                      to local config.
                     </Text>
                   </Box>
                 )}
               </Box>
-            );
+            )
           }
 
           // Render the component
-          const { unmount } = render(<ClaudeDesktopImport />);
+          const { unmount } = render(<ClaudeDesktopImport />)
 
           // Clean up when done
           setTimeout(() => {
-            unmount();
-            resolve();
-          }, 30000); // Timeout after 30 seconds as a fallback
-        });
+            unmount()
+            resolve()
+          }, 30000) // Timeout after 30 seconds as a fallback
+        })
 
-        process.exit(0);
+        process.exit(0)
       } catch (error) {
-        console.error(`Error: ${(error as Error).message}`);
-        process.exit(1);
+        console.error(`Error: ${(error as Error).message}`)
+        process.exit(1)
       }
     })
 
   // Function to reset MCP server choices
   const resetMcpChoices = () => {
-    const config = getCurrentProjectConfig();
+    const config = getCurrentProjectConfig()
     saveCurrentProjectConfig({
       ...config,
       approvedMcprcServers: [],
       rejectedMcprcServers: [],
-    });
-    console.log(
-      'All .mcprc server approvals and rejections have been reset.',
-    );
+    })
+    console.log('All .mcprc server approvals and rejections have been reset.')
     console.log(
       `You will be prompted for approval next time you start ${PRODUCT_NAME}.`,
-    );
-    process.exit(0);
-  };
+    )
+    process.exit(0)
+  }
 
   // New command name to match Claude Code
   mcp
     .command('reset-project-choices')
-    .description('Reset all approved and rejected project-scoped (.mcp.json) servers within this project')
+    .description(
+      'Reset all approved and rejected project-scoped (.mcp.json) servers within this project',
+    )
     .action(() => {
-      logEvent('tengu_mcp_reset_project_choices', {});
-      resetMcpChoices();
-    });
+      logEvent('tengu_mcp_reset_project_choices', {})
+      resetMcpChoices()
+    })
 
   // Keep old command for backward compatibility (visible only to ants)
   if (process.env.USER_TYPE === 'ant') {
@@ -1127,8 +1193,8 @@ ${commandList}`,
         'Reset all approved and rejected .mcprc servers for this project',
       )
       .action(() => {
-        logEvent('tengu_mcp_reset_mcprc_choices', {});
-        resetMcpChoices();
+        logEvent('tengu_mcp_reset_mcprc_choices', {})
+        resetMcpChoices()
       })
   }
 
@@ -1147,284 +1213,275 @@ ${commandList}`,
 
   // ant-only commands
 
-    // claude update
-    program
-      .command('update')
-      .description('Check for updates and install if available')
-      .action(async () => {
-        const useExternalUpdater = await checkGate(GATE_USE_EXTERNAL_UPDATER)
-        if (useExternalUpdater) {
-          // The external updater intercepts calls to "claude update", which means if we have received
-          // this command at all, the extenral updater isn't installed on this machine.
-          console.log(`This version of ${PRODUCT_NAME} is no longer supported.`)
-          process.exit(0)
-        }
+  // claude update
+  program
+    .command('update')
+    .description('Check for updates and install if available')
+    .action(async () => {
+      const useExternalUpdater = await checkGate(GATE_USE_EXTERNAL_UPDATER)
+      if (useExternalUpdater) {
+        // The external updater intercepts calls to "claude update", which means if we have received
+        // this command at all, the extenral updater isn't installed on this machine.
+        console.log(`This version of ${PRODUCT_NAME} is no longer supported.`)
+        process.exit(0)
+      }
 
-        logEvent('tengu_update_check', {})
-        console.log(`Current version: ${MACRO.VERSION}`)
-        console.log('Checking for updates...')
+      logEvent('tengu_update_check', {})
+      console.log(`Current version: ${MACRO.VERSION}`)
+      console.log('Checking for updates...')
 
-        const latestVersion = await getLatestVersion()
+      const latestVersion = await getLatestVersion()
 
-        if (!latestVersion) {
-          console.error('Failed to check for updates')
+      if (!latestVersion) {
+        console.error('Failed to check for updates')
+        process.exit(1)
+      }
+
+      if (latestVersion === MACRO.VERSION) {
+        console.log(`${PRODUCT_NAME} is up to date`)
+        process.exit(0)
+      }
+
+      console.log(`New version available: ${latestVersion}`)
+      console.log('Installing update...')
+
+      const status = await installGlobalPackage()
+
+      switch (status) {
+        case 'success':
+          console.log(`Successfully updated to version ${latestVersion}`)
+          break
+        case 'no_permissions':
+          console.error('Error: Insufficient permissions to install update')
+          console.error('Try running with sudo or fix npm permissions')
           process.exit(1)
-        }
+          break
+        case 'install_failed':
+          console.error('Error: Failed to install update')
+          process.exit(1)
+          break
+        case 'in_progress':
+          console.error(
+            'Error: Another instance is currently performing an update',
+          )
+          console.error('Please wait and try again later')
+          process.exit(1)
+          break
+      }
+      process.exit(0)
+    })
 
-        if (latestVersion === MACRO.VERSION) {
-          console.log(`${PRODUCT_NAME} is up to date`)
-          process.exit(0)
-        }
-
-        console.log(`New version available: ${latestVersion}`)
-        console.log('Installing update...')
-
-        const status = await installGlobalPackage()
-
-        switch (status) {
-          case 'success':
-            console.log(`Successfully updated to version ${latestVersion}`)
-            break
-          case 'no_permissions':
-            console.error('Error: Insufficient permissions to install update')
-            console.error('Try running with sudo or fix npm permissions')
-            process.exit(1)
-            break
-          case 'install_failed':
-            console.error('Error: Failed to install update')
-            process.exit(1)
-            break
-          case 'in_progress':
-            console.error(
-              'Error: Another instance is currently performing an update',
-            )
-            console.error('Please wait and try again later')
-            process.exit(1)
-            break
-        }
-        process.exit(0)
-      })
-
-    // claude log
-    program
-      .command('log')
-      .description('Manage conversation logs.')
-      .argument(
-        '[number]',
-        'A number (0, 1, 2, etc.) to display a specific log',
-        parseInt,
+  // claude log
+  program
+    .command('log')
+    .description('Manage conversation logs.')
+    .argument(
+      '[number]',
+      'A number (0, 1, 2, etc.) to display a specific log',
+      parseInt,
+    )
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .action(async (number, { cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_view_logs', { number: number?.toString() ?? '' })
+      const context: { unmount?: () => void } = {}
+      const { unmount } = render(
+        <LogList context={context} type="messages" logNumber={number} />,
+        renderContextWithExitOnCtrlC,
       )
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .action(async (number, { cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_view_logs', { number: number?.toString() ?? '' })
-        const context: { unmount?: () => void } = {}
-        const { unmount } = render(
-          <LogList context={context} type="messages" logNumber={number} />,
-          renderContextWithExitOnCtrlC,
-        )
-        context.unmount = unmount
-      })
+      context.unmount = unmount
+    })
 
-    // claude resume
-    program
-      .command('resume')
-      .description(
-        'Resume a previous conversation. Optionally provide a number (0, 1, 2, etc.) or file path to resume a specific conversation.',
-      )
-      .argument(
-        '[identifier]',
-        'A number (0, 1, 2, etc.) or file path to resume a specific conversation',
-      )
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .option(
-        '-e, --enable-architect',
-        'Enable the Architect tool',
-        () => true,
-      )
-      .option('-v, --verbose', 'Do not truncate message output', () => true)
-      .option(
-        '--dangerously-skip-permissions',
-        'Skip all permission checks. Only works in Docker containers with no internet access. Will crash otherwise.',
-        () => true,
-      )
-      .action(
-        async (
-          identifier,
-          { cwd, enableArchitect, dangerouslySkipPermissions, verbose },
-        ) => {
-          await setup(cwd, dangerouslySkipPermissions)
-          assertMinVersion()
+  // claude resume
+  program
+    .command('resume')
+    .description(
+      'Resume a previous conversation. Optionally provide a number (0, 1, 2, etc.) or file path to resume a specific conversation.',
+    )
+    .argument(
+      '[identifier]',
+      'A number (0, 1, 2, etc.) or file path to resume a specific conversation',
+    )
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .option('-e, --enable-architect', 'Enable the Architect tool', () => true)
+    .option('-v, --verbose', 'Do not truncate message output', () => true)
+    .option(
+      '--dangerously-skip-permissions',
+      'Skip all permission checks. Only works in Docker containers with no internet access. Will crash otherwise.',
+      () => true,
+    )
+    .action(
+      async (
+        identifier,
+        { cwd, enableArchitect, dangerouslySkipPermissions, verbose },
+      ) => {
+        await setup(cwd, dangerouslySkipPermissions)
+        assertMinVersion()
 
-          const [tools, commands, logs, mcpClients] = await Promise.all([
-            getTools(
-              enableArchitect ?? getCurrentProjectConfig().enableArchitectTool,
-            ),
-            getCommands(),
-            loadLogList(CACHE_PATHS.messages()),
-            getClients(),
-          ])
-          // logStartup()
+        const [tools, commands, logs, mcpClients] = await Promise.all([
+          getTools(
+            enableArchitect ?? getCurrentProjectConfig().enableArchitectTool,
+          ),
+          getCommands(),
+          loadLogList(CACHE_PATHS.messages()),
+          getClients(),
+        ])
+        // logStartup()
 
-          // If a specific conversation is requested, load and resume it directly
-          if (identifier !== undefined) {
-            // Check if identifier is a number or a file path
-            const number = Math.abs(parseInt(identifier))
-            const isNumber = !isNaN(number)
-            let messages, date, forkNumber
-            try {
-              if (isNumber) {
-                logEvent('tengu_resume', { number: number.toString() })
-                const log = logs[number]
-                if (!log) {
-                  console.error('No conversation found at index', number)
-                  process.exit(1)
-                }
-                messages = await loadMessagesFromLog(log.fullPath, tools)
-                ;({ date, forkNumber } = log)
-              } else {
-                // Handle file path case
-                logEvent('tengu_resume', { filePath: identifier })
-                if (!existsSync(identifier)) {
-                  console.error('File does not exist:', identifier)
-                  process.exit(1)
-                }
-                messages = await loadMessagesFromLog(identifier, tools)
-                const pathSegments = identifier.split('/')
-                const filename =
-                  pathSegments[pathSegments.length - 1] ?? 'unknown'
-                ;({ date, forkNumber } = parseLogFilename(filename))
+        // If a specific conversation is requested, load and resume it directly
+        if (identifier !== undefined) {
+          // Check if identifier is a number or a file path
+          const number = Math.abs(parseInt(identifier))
+          const isNumber = !isNaN(number)
+          let messages, date, forkNumber
+          try {
+            if (isNumber) {
+              logEvent('tengu_resume', { number: number.toString() })
+              const log = logs[number]
+              if (!log) {
+                console.error('No conversation found at index', number)
+                process.exit(1)
               }
-              const fork = getNextAvailableLogForkNumber(
-                date,
-                forkNumber ?? 1,
-                0,
-              )
-              const isDefaultModel = await isDefaultSlowAndCapableModel()
-              render(
-                <REPL
-                  initialPrompt=""
-                  messageLogName={date}
-                  initialForkNumber={fork}
-                  shouldShowPromptInput={true}
-                  verbose={verbose}
-                  commands={commands}
-                  tools={tools}
-                  initialMessages={messages}
-                  mcpClients={mcpClients}
-                  isDefaultModel={isDefaultModel}
-                />,
-                { exitOnCtrlC: false },
-              )
-            } catch (error) {
-              logError(`Failed to load conversation: ${error}`)
-              process.exit(1)
+              messages = await loadMessagesFromLog(log.fullPath, tools)
+              ;({ date, forkNumber } = log)
+            } else {
+              // Handle file path case
+              logEvent('tengu_resume', { filePath: identifier })
+              if (!existsSync(identifier)) {
+                console.error('File does not exist:', identifier)
+                process.exit(1)
+              }
+              messages = await loadMessagesFromLog(identifier, tools)
+              const pathSegments = identifier.split('/')
+              const filename =
+                pathSegments[pathSegments.length - 1] ?? 'unknown'
+              ;({ date, forkNumber } = parseLogFilename(filename))
             }
-          } else {
-            // Show the conversation selector UI
-            const context: { unmount?: () => void } = {}
-            const { unmount } = render(
-              <ResumeConversation
-                context={context}
-                commands={commands}
-                logs={logs}
-                tools={tools}
+            const fork = getNextAvailableLogForkNumber(date, forkNumber ?? 1, 0)
+            const isDefaultModel = await isDefaultSlowAndCapableModel()
+            render(
+              <REPL
+                initialPrompt=""
+                messageLogName={date}
+                initialForkNumber={fork}
+                shouldShowPromptInput={true}
                 verbose={verbose}
+                commands={commands}
+                tools={tools}
+                initialMessages={messages}
+                mcpClients={mcpClients}
+                isDefaultModel={isDefaultModel}
               />,
-              renderContextWithExitOnCtrlC,
+              { exitOnCtrlC: false },
             )
-            context.unmount = unmount
+          } catch (error) {
+            logError(`Failed to load conversation: ${error}`)
+            process.exit(1)
           }
-        },
+        } else {
+          // Show the conversation selector UI
+          const context: { unmount?: () => void } = {}
+          const { unmount } = render(
+            <ResumeConversation
+              context={context}
+              commands={commands}
+              logs={logs}
+              tools={tools}
+              verbose={verbose}
+            />,
+            renderContextWithExitOnCtrlC,
+          )
+          context.unmount = unmount
+        }
+      },
+    )
+
+  // claude error
+  program
+    .command('error')
+    .description(
+      'View error logs. Optionally provide a number (0, -1, -2, etc.) to display a specific log.',
+    )
+    .argument(
+      '[number]',
+      'A number (0, 1, 2, etc.) to display a specific log',
+      parseInt,
+    )
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .action(async (number, { cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_view_errors', { number: number?.toString() ?? '' })
+      const context: { unmount?: () => void } = {}
+      const { unmount } = render(
+        <LogList context={context} type="errors" logNumber={number} />,
+        renderContextWithExitOnCtrlC,
       )
+      context.unmount = unmount
+    })
 
-    // claude error
-    program
-      .command('error')
-      .description(
-        'View error logs. Optionally provide a number (0, -1, -2, etc.) to display a specific log.',
+  // claude context (TODO: deprecate)
+  const context = program
+    .command('context')
+    .description(
+      `Set static context (eg. ${PRODUCT_COMMAND} context add-file ./src/*.py)`,
+    )
+
+  context
+    .command('get <key>')
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .description('Get a value from context')
+    .action(async (key, { cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_context_get', { key })
+      const context = omit(
+        await getContext(),
+        'codeStyle',
+        'directoryStructure',
       )
-      .argument(
-        '[number]',
-        'A number (0, 1, 2, etc.) to display a specific log',
-        parseInt,
+      console.log(context[key])
+      process.exit(0)
+    })
+
+  context
+    .command('set <key> <value>')
+    .description('Set a value in context')
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .action(async (key, value, { cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_context_set', { key })
+      setContext(key, value)
+      console.log(`Set context.${key} to "${value}"`)
+      process.exit(0)
+    })
+
+  context
+    .command('list')
+    .description('List all context values')
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .action(async ({ cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_context_list', {})
+      const context = omit(
+        await getContext(),
+        'codeStyle',
+        'directoryStructure',
+        'gitStatus',
       )
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .action(async (number, { cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_view_errors', { number: number?.toString() ?? '' })
-        const context: { unmount?: () => void } = {}
-        const { unmount } = render(
-          <LogList context={context} type="errors" logNumber={number} />,
-          renderContextWithExitOnCtrlC,
-        )
-        context.unmount = unmount
-      })
+      console.log(JSON.stringify(context, null, 2))
+      process.exit(0)
+    })
 
-    // claude context (TODO: deprecate)
-    const context = program
-      .command('context')
-      .description(
-        `Set static context (eg. ${PRODUCT_COMMAND} context add-file ./src/*.py)`,
-      )
-
-    context
-      .command('get <key>')
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .description('Get a value from context')
-      .action(async (key, { cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_context_get', { key })
-        const context = omit(
-          await getContext(),
-          'codeStyle',
-          'directoryStructure',
-        )
-        console.log(context[key])
-        process.exit(0)
-      })
-
-    context
-      .command('set <key> <value>')
-      .description('Set a value in context')
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .action(async (key, value, { cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_context_set', { key })
-        setContext(key, value)
-        console.log(`Set context.${key} to "${value}"`)
-        process.exit(0)
-      })
-
-    context
-      .command('list')
-      .description('List all context values')
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .action(async ({ cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_context_list', {})
-        const context = omit(
-          await getContext(),
-          'codeStyle',
-          'directoryStructure',
-          'gitStatus',
-        )
-        console.log(JSON.stringify(context, null, 2))
-        process.exit(0)
-      })
-
-    context
-      .command('remove <key>')
-      .description('Remove a value from context')
-      .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
-      .action(async (key, { cwd }) => {
-        await setup(cwd, false)
-        logEvent('tengu_context_delete', { key })
-        removeContext(key)
-        console.log(`Removed context.${key}`)
-        process.exit(0)
-      })
-
+  context
+    .command('remove <key>')
+    .description('Remove a value from context')
+    .option('-c, --cwd <cwd>', 'The current working directory', String, cwd())
+    .action(async (key, { cwd }) => {
+      await setup(cwd, false)
+      logEvent('tengu_context_delete', { key })
+      removeContext(key)
+      console.log(`Removed context.${key}`)
+      process.exit(0)
+    })
 
   await program.parseAsync(process.argv)
   return program
