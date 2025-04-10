@@ -40,10 +40,10 @@ export function Help({
 
       <Box marginTop={1} flexDirection="column">
         <Text>
-          {PRODUCT_NAME} is a beta research preview. Always review {PRODUCT_NAME}&apos;s
-          responses, especially when running code. {PRODUCT_NAME} has read access to
-          files in the current directory and can run commands and edit files
-          with your permission.
+          {PRODUCT_NAME} is a beta research preview. Always review{' '}
+          {PRODUCT_NAME}&apos;s responses, especially when running code.{' '}
+          {PRODUCT_NAME} has read access to files in the current directory and
+          can run commands and edit files with your permission.
         </Text>
       </Box>
 
@@ -54,11 +54,13 @@ export function Help({
             • REPL: <Text bold>{PRODUCT_COMMAND}</Text> (interactive session)
           </Text>
           <Text>
-            • Non-interactive: <Text bold>{PRODUCT_COMMAND} -p &quot;question&quot;</Text>
+            • Non-interactive:{' '}
+            <Text bold>{PRODUCT_COMMAND} -p &quot;question&quot;</Text>
           </Text>
           <Box marginTop={1}>
             <Text>
-              Run <Text bold>{PRODUCT_COMMAND} -h</Text> for all command line options
+              Run <Text bold>{PRODUCT_COMMAND} -h</Text> for all command line
+              options
             </Text>
           </Box>
         </Box>

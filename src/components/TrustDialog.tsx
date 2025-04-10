@@ -82,7 +82,6 @@ export function TrustDialog({ onDone }: Props): React.ReactNode {
             With your permission {PRODUCT_NAME} may execute files in this
             folder. Executing untrusted code is unsafe.
           </Text>
-
         </Box>
 
         <Select

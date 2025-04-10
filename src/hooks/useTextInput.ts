@@ -159,10 +159,13 @@ export function useTextInput({
     ['d', handleCtrlD],
     ['e', () => cursor.endOfLine()],
     ['f', () => cursor.right()],
-    ['h', () => {
-      maybeClearImagePasteErrorTimeout()
-      return cursor.backspace()
-    }],
+    [
+      'h',
+      () => {
+        maybeClearImagePasteErrorTimeout()
+        return cursor.backspace()
+      },
+    ],
     ['k', () => cursor.deleteToLineEnd()],
     ['l', () => clear()],
     ['n', () => downOrHistoryDown()],
@@ -218,7 +221,13 @@ export function useTextInput({
 
   function onInput(input: string, key: Key): void {
     // Direct handling for backspace or delete (which is being detected as delete)
-    if (key.backspace || key.delete || input === '\b' || input === '\x7f' || input === '\x08') {
+    if (
+      key.backspace ||
+      key.delete ||
+      input === '\b' ||
+      input === '\x7f' ||
+      input === '\x08'
+    ) {
       const nextCursor = cursor.backspace()
       if (!cursor.equals(nextCursor)) {
         setOffset(nextCursor.offset)
@@ -228,7 +237,7 @@ export function useTextInput({
       }
       return
     }
-    
+
     const nextCursor = mapKey(key)(input)
     if (nextCursor) {
       if (!cursor.equals(nextCursor)) {
@@ -246,7 +255,7 @@ export function useTextInput({
       maybeClearImagePasteErrorTimeout()
       return () => cursor.backspace()
     }
-    
+
     switch (true) {
       case key.escape:
         return handleEscape

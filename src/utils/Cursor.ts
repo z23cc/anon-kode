@@ -166,17 +166,18 @@ export class Cursor {
     if (this.isAtStart()) {
       return this
     }
-    
+
     // Get the current position
     const currentOffset = this.offset
-    
+
     // Create a new cursor at the position before the current one
     const leftCursor = this.left()
     const leftOffset = leftCursor.offset
-    
+
     // Create the new text by removing one character
-    const newText = this.text.slice(0, leftOffset) + this.text.slice(currentOffset)
-    
+    const newText =
+      this.text.slice(0, leftOffset) + this.text.slice(currentOffset)
+
     // Return a new cursor with the updated text and position
     return Cursor.fromText(newText, this.columns, leftOffset)
   }

@@ -59,7 +59,7 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
     // After model selection is done, go to the next step
     goToNextStep()
   }
-  
+
   function handleModelSelectionDone() {
     // After final model selection is done, complete onboarding
     onDone()
@@ -156,12 +156,8 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
     <Box flexDirection="column" gap={1} paddingLeft={1}>
       <Text bold>Using {PRODUCT_NAME} effectively:</Text>
       <Box flexDirection="column" width={70}>
-        <OrderedList
-          children={[]}
-        >
-          <OrderedList.Item
-            children={[]}
-          >
+        <OrderedList children={[]}>
+          <OrderedList.Item children={[]}>
             <Text>
               Start in your project directory
               <Newline />
@@ -171,9 +167,7 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
               <Newline />
             </Text>
           </OrderedList.Item>
-          <OrderedList.Item
-            children={[]}
-          >
+          <OrderedList.Item children={[]}>
             <Text>
               Use {PRODUCT_NAME} as a development partner
               <Newline />
@@ -185,9 +179,7 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
               </Text>
             </Text>
           </OrderedList.Item>
-          <OrderedList.Item
-            children={[]}
-          >
+          <OrderedList.Item children={[]}>
             <Text>
               Provide clear context
               <Newline />
@@ -208,14 +200,18 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
       <Text bold>Configure your models:</Text>
       <Box flexDirection="column" width={70}>
         <Text>
-          You can customize which models {PRODUCT_NAME} uses for different tasks.
+          You can customize which models {PRODUCT_NAME} uses for different
+          tasks.
           <Newline />
           <Text color={theme.secondaryText}>
             Let's set up your preferred models for large and small tasks.
           </Text>
         </Text>
         <Box marginTop={1}>
-          <Text>Press <Text color={theme.suggestion}>Enter</Text> to continue to the model selection screen.</Text>
+          <Text>
+            Press <Text color={theme.suggestion}>Enter</Text> to continue to the
+            model selection screen.
+          </Text>
         </Box>
       </Box>
       <PressEnterToContinue />
@@ -232,13 +228,16 @@ export function Onboarding({ onDone }: Props): React.ReactNode {
   if (showModelSelector) {
     return <ModelSelector onDone={handleModelSelectionDone} />
   }
-  
+
   return (
     <Box flexDirection="column" gap={1}>
       <>
         <Box flexDirection="column" gap={1}>
           <Text bold>
-            {PRODUCT_NAME} {exitState.pending ? `(press ${exitState.keyName} again to exit)` : ''}
+            {PRODUCT_NAME}{' '}
+            {exitState.pending
+              ? `(press ${exitState.keyName} again to exit)`
+              : ''}
           </Text>
           {steps[currentStepIndex]?.component}
         </Box>

@@ -2,7 +2,11 @@ import { Box, Text, Newline } from 'ink'
 import * as React from 'react'
 import { getTheme } from '../utils/theme'
 import { PRODUCT_NAME } from '../constants/product'
-import { isDefaultApiKey, getAnthropicApiKey, getGlobalConfig } from '../utils/config'
+import {
+  isDefaultApiKey,
+  getAnthropicApiKey,
+  getGlobalConfig,
+} from '../utils/config'
 import { getCwd } from '../utils/state'
 import { AsciiLogo } from './AsciiLogo'
 import type { WrappedClient } from '../services/mcpClient'
@@ -19,16 +23,19 @@ export function Logo({
   const width = Math.max(MIN_LOGO_WIDTH, getCwd().length + 12)
   const theme = getTheme()
   const config = getGlobalConfig()
-  const currentModel = config.largeModelName && (config.largeModelName === config.smallModelName ? config.largeModelName : config.largeModelName + ' | ' + config.smallModelName)
+  const currentModel =
+    config.largeModelName &&
+    (config.largeModelName === config.smallModelName
+      ? config.largeModelName
+      : config.largeModelName + ' | ' + config.smallModelName)
   const apiKey = getAnthropicApiKey()
   const isCustomApiKey = !isDefaultApiKey()
-  const hasOverrides =
-    Boolean(
-      isCustomApiKey ||
-        process.env.DISABLE_PROMPT_CACHING ||
-        process.env.API_TIMEOUT_MS ||
-        process.env.MAX_THINKING_TOKENS
-    )
+  const hasOverrides = Boolean(
+    isCustomApiKey ||
+      process.env.DISABLE_PROMPT_CACHING ||
+      process.env.API_TIMEOUT_MS ||
+      process.env.MAX_THINKING_TOKENS,
+  )
 
   return (
     <Box flexDirection="column">
@@ -53,12 +60,12 @@ export function Logo({
             </Text>
             <Text color={theme.secondaryText}>cwd: {getCwd()}</Text>
             {currentModel && (
-                <Text color={theme.secondaryText}>
-                  Model: <Text bold>{currentModel}</Text>
-                </Text>
-              )}            
+              <Text color={theme.secondaryText}>
+                Model: <Text bold>{currentModel}</Text>
+              </Text>
+            )}
           </Box>
-          
+
           {hasOverrides && (
             <Box
               borderColor={theme.secondaryBorder}

@@ -126,13 +126,13 @@ export type GlobalConfig = {
   primaryProvider?: ProviderType
   largeModelBaseURL?: string
   largeModelName?: string
-  largeModelApiKeyRequired?: boolean 
+  largeModelApiKeyRequired?: boolean
   largeModelApiKeys?: string[]
   largeModelApiKey?: string // Deprecated
   largeModelReasoningEffort?: 'low' | 'medium' | 'high' | undefined
   smallModelBaseURL?: string
   smallModelName?: string
-  smallModelApiKeyRequired?: boolean 
+  smallModelApiKeyRequired?: boolean
   smallModelApiKeys?: string[]
   smallModelApiKey?: string // Deprecated
   smallModelReasoningEffort?: 'low' | 'medium' | 'high' | undefined
@@ -225,12 +225,11 @@ export function isProjectConfigKey(key: string): key is ProjectConfigKey {
 }
 
 export function saveGlobalConfig(config: GlobalConfig): void {
-
-  if(config.largeModelApiKey && !config.largeModelApiKeys) {
+  if (config.largeModelApiKey && !config.largeModelApiKeys) {
     config.largeModelApiKeys = [config.largeModelApiKey]
     delete config.largeModelApiKey
   }
-  if(config.smallModelApiKey && !config.smallModelApiKeys) {
+  if (config.smallModelApiKey && !config.smallModelApiKeys) {
     config.smallModelApiKeys = [config.smallModelApiKey]
     delete config.smallModelApiKey
   }
@@ -287,7 +286,7 @@ export function getGlobalConfig(): GlobalConfig {
 
 export function getAnthropicApiKey(): null | string {
   const config = getGlobalConfig()
-  return process.env.SMALL_MODEL_API_KEY;
+  return process.env.SMALL_MODEL_API_KEY
 }
 
 export function normalizeApiKeyForConfig(apiKey: string): string {
@@ -360,19 +359,31 @@ function getConfig<A>(
     const fileContent = readFileSync(file, 'utf-8')
     try {
       const parsedConfig = JSON.parse(fileContent)
-      
+
       // Handle backward compatibility for API keys
-      if ('smallModelApiKey' in parsedConfig && !parsedConfig.smallModelApiKeys) {
-        parsedConfig.smallModelApiKeys = parsedConfig.smallModelApiKey ? [parsedConfig.smallModelApiKey] : []
+      if (
+        'smallModelApiKey' in parsedConfig &&
+        !parsedConfig.smallModelApiKeys
+      ) {
+        parsedConfig.smallModelApiKeys = parsedConfig.smallModelApiKey
+          ? [parsedConfig.smallModelApiKey]
+          : []
         delete parsedConfig.smallModelApiKey
       }
-      if ('largeModelApiKey' in parsedConfig && !parsedConfig.largeModelApiKeys) {
-        parsedConfig.largeModelApiKeys = parsedConfig.largeModelApiKey ? [parsedConfig.largeModelApiKey] : []
+      if (
+        'largeModelApiKey' in parsedConfig &&
+        !parsedConfig.largeModelApiKeys
+      ) {
+        parsedConfig.largeModelApiKeys = parsedConfig.largeModelApiKey
+          ? [parsedConfig.largeModelApiKey]
+          : []
         delete parsedConfig.largeModelApiKey
       }
 
-      parsedConfig.smallModelApiKeys = parsedConfig.smallModelApiKeys?.filter(key => key !== '') || []
-      parsedConfig.largeModelApiKeys = parsedConfig.largeModelApiKeys?.filter(key => key !== '') || []
+      parsedConfig.smallModelApiKeys =
+        parsedConfig.smallModelApiKeys?.filter(key => key !== '') || []
+      parsedConfig.largeModelApiKeys =
+        parsedConfig.largeModelApiKeys?.filter(key => key !== '') || []
 
       return {
         ...cloneDeep(defaultConfig),
@@ -643,7 +654,11 @@ export function getOpenAIApiKey(): string | undefined {
   return process.env.OPENAI_API_KEY
 }
 
-export function addApiKey(config: GlobalConfig, key: string, type: 'small' | 'large'): void {
+export function addApiKey(
+  config: GlobalConfig,
+  key: string,
+  type: 'small' | 'large',
+): void {
   const keyArray = type === 'small' ? 'smallModelApiKeys' : 'largeModelApiKeys'
   if (!config[keyArray]) {
     config[keyArray] = []
@@ -653,14 +668,21 @@ export function addApiKey(config: GlobalConfig, key: string, type: 'small' | 'la
   }
 }
 
-export function removeApiKey(config: GlobalConfig, key: string, type: 'small' | 'large'): void {
+export function removeApiKey(
+  config: GlobalConfig,
+  key: string,
+  type: 'small' | 'large',
+): void {
   const keyArray = type === 'small' ? 'smallModelApiKeys' : 'largeModelApiKeys'
   if (config[keyArray]) {
     config[keyArray] = config[keyArray]!.filter(k => k !== key)
   }
 }
 
-export function getApiKeys(config: GlobalConfig, type: 'small' | 'large'): string[] {
+export function getApiKeys(
+  config: GlobalConfig,
+  type: 'small' | 'large',
+): string[] {
   const keyArray = type === 'small' ? 'smallModelApiKeys' : 'largeModelApiKeys'
   return config[keyArray] || []
 }
@@ -668,20 +690,27 @@ export function getApiKeys(config: GlobalConfig, type: 'small' | 'large'): strin
 // Add counter for round-robin key selection
 let currentKeyIndex = 0
 
-export function getActiveApiKey(config: GlobalConfig, type: 'small' | 'large', roundRobin: boolean = true): string | undefined {
-  let keyArray = type === 'small' ? config.smallModelApiKeys : config.largeModelApiKeys
-  if(!keyArray) {
+export function getActiveApiKey(
+  config: GlobalConfig,
+  type: 'small' | 'large',
+  roundRobin: boolean = true,
+): string | undefined {
+  let keyArray =
+    type === 'small' ? config.smallModelApiKeys : config.largeModelApiKeys
+  if (!keyArray) {
     keyArray = []
   }
   const failedKeys = getSessionState('failedApiKeys')[type]
-  keyArray = keyArray.filter(key => !failedKeys.includes(key)).filter(key => key && key !== '')
+  keyArray = keyArray
+    .filter(key => !failedKeys.includes(key))
+    .filter(key => key && key !== '')
   if (!keyArray || keyArray.length === 0) {
     return undefined
   }
 
   // Get the current index from session state or start at 0
   const currentIndex = getSessionState('currentApiKeyIndex')[type]
-  if(!roundRobin) {
+  if (!roundRobin) {
     return keyArray[currentIndex]
   }
 
@@ -689,7 +718,7 @@ export function getActiveApiKey(config: GlobalConfig, type: 'small' | 'large', r
   // Store the next index for next time
   setSessionState('currentApiKeyIndex', {
     ...getSessionState('currentApiKeyIndex'),
-    [type]: nextIndex
+    [type]: nextIndex,
   })
   return keyArray[nextIndex]
 }
@@ -700,11 +729,11 @@ export function markApiKeyAsFailed(key: string, type: 'small' | 'large'): void {
   if (!failedKeys.includes(key)) {
     setSessionState('failedApiKeys', {
       ...getSessionState('failedApiKeys'),
-      [type]: [...failedKeys, key]
+      [type]: [...failedKeys, key],
     })
     setSessionState('currentApiKeyIndex', {
       ...getSessionState('currentApiKeyIndex'),
-      [type]: getSessionState('currentApiKeyIndex')[type] - 1
+      [type]: getSessionState('currentApiKeyIndex')[type] - 1,
     })
   }
 }

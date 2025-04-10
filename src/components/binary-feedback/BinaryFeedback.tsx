@@ -43,7 +43,9 @@ export function BinaryFeedback({
     },
     [m1, m2, resolve],
   )
-  useNotifyAfterTimeout(`${PRODUCT_NAME} needs your input on a response comparison`)
+  useNotifyAfterTimeout(
+    `${PRODUCT_NAME} needs your input on a response comparison`,
+  )
   return (
     <BinaryFeedbackView
       debug={debug}

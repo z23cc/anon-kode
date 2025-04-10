@@ -10,8 +10,7 @@ const PROD_OAUTH_CONFIG = {
   AUTHORIZE_URL: '',
   TOKEN_URL: '',
   API_KEY_URL: '',
-  SUCCESS_URL:
-    '',
+  SUCCESS_URL: '',
   CLIENT_ID: '',
 } as const
 

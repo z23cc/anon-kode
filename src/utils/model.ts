@@ -43,7 +43,6 @@ async function getModelConfig(): Promise<ModelConfig> {
 }
 
 export const getSlowAndCapableModel = memoize(async (): Promise<string> => {
-
   const config = await getGlobalConfig()
   return config.smallModelName
 })
