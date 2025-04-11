@@ -53,12 +53,14 @@ import {
   normalizeMessagesForAPI,
   processUserInput,
   reorderMessages,
+  extractTag,
 } from '../utils/messages.js'
 import { getSlowAndCapableModel } from '../utils/model'
 import { clearTerminal, updateTerminalTitle } from '../utils/terminal'
 import { BinaryFeedback } from '../components/binary-feedback/BinaryFeedback'
 import { getMaxThinkingTokens } from '../utils/thinking'
 import { getOriginalCwd } from '../utils/state'
+import { handleHashCommand } from '../commands/terminalSetup'
 
 type Props = {
   commands: Command[]
@@ -126,7 +128,9 @@ export function REPL({
   )
   const [messages, setMessages] = useState<MessageType[]>(initialMessages ?? [])
   const [inputValue, setInputValue] = useState('')
-  const [inputMode, setInputMode] = useState<'bash' | 'prompt'>('prompt')
+  const [inputMode, setInputMode] = useState<'bash' | 'prompt' | 'koding'>(
+    'prompt',
+  )
   const [submitCount, setSubmitCount] = useState(0)
   const [isMessageSelectorVisible, setIsMessageSelectorVisible] =
     useState(false)
@@ -302,6 +306,13 @@ export function REPL({
     newMessages: MessageType[],
     abortController: AbortController,
   ) {
+    // Check if this is a Koding request based on last message's options
+    const isKodingRequest =
+      newMessages.length > 0 &&
+      newMessages[0].type === 'user' &&
+      'options' in newMessages[0] &&
+      newMessages[0].options?.isKodingRequest === true
+
     setMessages(oldMessages => [...oldMessages, ...newMessages])
 
     // Mark onboarding as complete when any user message is sent to Claude
@@ -333,6 +344,8 @@ export function REPL({
       ],
     )
 
+    let lastAssistantMessage: MessageType | null = null
+
     // query the API
     for await (const message of query(
       [...messages, lastMessage],
@@ -349,6 +362,8 @@ export function REPL({
           verbose,
           dangerouslySkipPermissions,
           maxThinkingTokens,
+          // If this came from Koding mode, pass that along
+          isKodingRequest: isKodingRequest || undefined,
         },
         messageId: getLastAssistantMessageId([...messages, lastMessage]),
         readFileTimestamps: readFileTimestamps.current,
@@ -358,7 +373,38 @@ export function REPL({
       getBinaryFeedbackResponse,
     )) {
       setMessages(oldMessages => [...oldMessages, message])
+
+      // Keep track of the last assistant message for Koding mode
+      if (message.type === 'assistant') {
+        lastAssistantMessage = message
+      }
     }
+
+    // If this was a Koding request and we got an assistant message back,
+    // save it to KODING.md
+    if (
+      isKodingRequest &&
+      lastAssistantMessage &&
+      lastAssistantMessage.type === 'assistant'
+    ) {
+      try {
+        const content =
+          typeof lastAssistantMessage.message.content === 'string'
+            ? lastAssistantMessage.message.content
+            : lastAssistantMessage.message.content
+                .filter(block => block.type === 'text')
+                .map(block => (block.type === 'text' ? block.text : ''))
+                .join('\n')
+
+        // Add the content to KODING.md
+        if (content && content.trim().length > 0) {
+          handleHashCommand(content)
+        }
+      } catch (error) {
+        console.error('Error saving response to KODING.md:', error)
+      }
+    }
+
     setIsLoading(false)
   }
 

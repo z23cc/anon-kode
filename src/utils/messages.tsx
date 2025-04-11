@@ -155,12 +155,16 @@ export function createToolResultStopMessage(
 
 export async function processUserInput(
   input: string,
-  mode: 'bash' | 'prompt',
+  mode: 'bash' | 'prompt' | 'koding',
   setToolJSX: SetToolJSXFn,
   context: ToolUseContext & {
     setForkConvoWithMessagesOnTheNextRender: (
       forkConvoWithMessages: Message[],
     ) => void
+    options?: {
+      isKodingRequest?: boolean
+      kodingContext?: string
+    }
   },
   pastedImage: string | null,
 ): Promise<Message[]> {
@@ -231,6 +235,22 @@ export async function processUserInput(
       setToolJSX(null)
     }
   }
+  // Koding mode - special wrapper for display
+  else if (mode === 'koding') {
+    logEvent('tengu_input_koding', {})
+
+    const userMessage = createUserMessage(
+      `<koding-input>${input}</koding-input>`,
+    )
+    // Add the Koding flag to the message
+    userMessage.options = {
+      ...userMessage.options,
+      isKodingRequest: true,
+    }
+
+    // Rest of koding processing is handled separately to capture assistant response
+    return [userMessage]
+  }
 
   // Slash commands
   if (input.startsWith('/')) {
@@ -293,25 +313,49 @@ export async function processUserInput(
 
   // Regular user prompt
   logEvent('tengu_input_prompt', {})
+
+  // Check if this is a Koding request that needs special handling
+  const isKodingRequest = context.options?.isKodingRequest === true
+  const kodingContextInfo = context.options?.kodingContext
+
+  // Create base message
+  let userMessage: UserMessage
+
   if (pastedImage) {
-    return [
-      createUserMessage([
-        {
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: 'image/png',
-            data: pastedImage,
-          },
+    userMessage = createUserMessage([
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/png',
+          data: pastedImage,
         },
-        {
-          type: 'text',
-          text: input,
-        },
-      ]),
-    ]
+      },
+      {
+        type: 'text',
+        text:
+          isKodingRequest && kodingContextInfo
+            ? `${kodingContextInfo}\n\n${input}`
+            : input,
+      },
+    ])
+  } else {
+    userMessage = createUserMessage(
+      isKodingRequest && kodingContextInfo
+        ? `${kodingContextInfo}\n\n${input}`
+        : input,
+    )
   }
-  return [createUserMessage(input)]
+
+  // Add the Koding flag to the message if needed
+  if (isKodingRequest) {
+    userMessage.options = {
+      ...userMessage.options,
+      isKodingRequest: true,
+    }
+  }
+
+  return [userMessage]
 }
 
 async function getMessagesForSlashCommand(
