@@ -22,7 +22,46 @@ import { getSlowAndCapableModel } from '../utils/model'
 import { setTerminalTitle } from '../utils/terminal'
 import terminalSetup, {
   isShiftEnterKeyBindingInstalled,
-} from '../commands/terminalSetup.js'
+  handleHashCommand,
+} from '../commands/terminalSetup'
+
+// Async function to interpret the '#' command input using AI
+async function interpretHashCommand(input: string): Promise<string> {
+  // Use the AI to interpret the input
+  try {
+    const { queryHaiku } = await import('../services/claude')
+
+    // Create a prompt for the model to interpret the hash command
+    const systemPrompt = [
+      "You're helping the user structure notes that will be added to their KODING.md file.",
+      "Format the user's input into a well-structured note that will be useful for later reference.",
+      'Add appropriate markdown formatting, headings, bullet points, or other structural elements as needed.',
+      'The goal is to transform the raw note into something that will be more useful when reviewed later.',
+      'You should keep the original meaning but make the structure clear.',
+    ]
+
+    // Send the request to the AI
+    const result = await queryHaiku({
+      systemPrompt,
+      userPrompt: `Transform this note for KODING.md: ${input}`,
+    })
+
+    // Extract the content from the response
+    if (typeof result.message.content === 'string') {
+      return result.message.content
+    } else if (Array.isArray(result.message.content)) {
+      return result.message.content
+        .filter(block => block.type === 'text')
+        .map(block => (block.type === 'text' ? block.text : ''))
+        .join('\n')
+    }
+
+    return `# ${input}\n\n_Added on ${new Date().toLocaleString()}_`
+  } catch (e) {
+    // If interpretation fails, return the input with minimal formatting
+    return `# ${input}\n\n_Added on ${new Date().toLocaleString()}_`
+  }
+}
 
 type Props = {
   commands: Command[]
@@ -43,8 +82,8 @@ type Props = {
   tools: Tool[]
   input: string
   onInputChange: (value: string) => void
-  mode: 'bash' | 'prompt'
-  onModeChange: (mode: 'bash' | 'prompt') => void
+  mode: 'bash' | 'prompt' | 'koding'
+  onModeChange: (mode: 'bash' | 'prompt' | 'koding') => void
   submitCount: number
   onSubmitCountChange: (updater: (prev: number) => number) => void
   setIsLoading: (isLoading: boolean) => void
@@ -91,10 +130,9 @@ function PromptInput({
     show: boolean
     key?: string
   }>({ show: false })
-  const [message, setMessage] = useState<{
-    show: boolean
-    text?: string
-  }>({ show: false })
+  const [message, setMessage] = useState<{ show: boolean; text?: string }>({
+    show: false,
+  })
   const [pastedImage, setPastedImage] = useState<string | null>(null)
   const [placeholder, setPlaceholder] = useState('')
   const [cursorOffset, setCursorOffset] = useState<number>(input.length)
@@ -130,6 +168,10 @@ function PromptInput({
         onModeChange('bash')
         return
       }
+      if (value.startsWith('#')) {
+        onModeChange('koding')
+        return
+      }
       updateSuggestions(value)
       onInputChange(value)
     },
@@ -137,7 +179,7 @@ function PromptInput({
   )
 
   const { resetHistory, onHistoryUp, onHistoryDown } = useArrowKeyHistory(
-    (value: string, mode: 'bash' | 'prompt') => {
+    (value: string, mode: 'bash' | 'prompt' | 'koding') => {
       onChange(value)
       onModeChange(mode)
     },
@@ -158,6 +200,98 @@ function PromptInput({
   }
 
   async function onSubmit(input: string, isSubmittingSlashCommand = false) {
+    // Special handling for "put a verbose summary" and similar action prompts in koding mode
+    if (
+      (mode === 'koding' || input.startsWith('#')) &&
+      input.match(/^(#\s*)?(put|create|generate|write|give|provide)/i)
+    ) {
+      try {
+        // Store the original input for history
+        const originalInput = input
+
+        // Strip the # prefix if present
+        const cleanInput = mode === 'koding' ? input : input.substring(1).trim()
+
+        // Add to history and clear input field
+        addToHistory(mode === 'koding' ? `#${input}` : input)
+        onInputChange('')
+
+        // Create additional context to inform Claude this is for KODING.md
+        const kodingContext =
+          'The user is using Koding mode. Format your response as a comprehensive, well-structured document suitable for adding to KODING.md. Use proper markdown formatting with headings, lists, code blocks, etc. The response should be complete and ready to add to KODING.md documentation.'
+
+        // Switch to prompt mode but tag the submission for later capture
+        onModeChange('prompt')
+
+        // Create a new AbortController for this request
+        const abortController = new AbortController()
+        setAbortController(abortController)
+        setIsLoading(true)
+
+        // Get appropriate model
+        const model = await getSlowAndCapableModel()
+
+        // Process as a normal user input but with special handling
+        const messages = await processUserInput(
+          cleanInput,
+          'prompt', // Use prompt mode for processing
+          setToolJSX,
+          {
+            options: {
+              commands,
+              forkNumber,
+              messageLogName,
+              tools,
+              verbose,
+              slowAndCapableModel: model,
+              maxThinkingTokens: 0,
+              // Add context flag for koding mode
+              isKodingRequest: true,
+              kodingContext,
+            },
+            messageId: undefined,
+            abortController,
+            readFileTimestamps,
+            setForkConvoWithMessagesOnTheNextRender,
+          },
+          pastedImage ?? null,
+        )
+
+        // Send query and capture response
+        if (messages.length) {
+          await onQuery(messages, abortController)
+
+          // After query completes, the last message should be Claude's response
+          // We'll set up a one-time listener to capture and save Claude's response
+          // This will be handled by the REPL component or message handler
+        }
+
+        return
+      } catch (e) {
+        // If something fails, log the error
+        console.error('Error processing Koding request:', e)
+      }
+    }
+
+    // If in koding mode or input starts with '#', interpret it using AI before appending to KODING.md
+    else if (mode === 'koding' || input.startsWith('#')) {
+      try {
+        // Strip the # if we're in koding mode and the user didn't type it (since it's implied)
+        const contentToInterpret =
+          mode === 'koding' && !input.startsWith('#')
+            ? input.trim()
+            : input.substring(1).trim()
+
+        const interpreted = await interpretHashCommand(contentToInterpret)
+        handleHashCommand(interpreted)
+      } catch (e) {
+        // If interpretation fails, log the error
+      }
+      onInputChange('')
+      addToHistory(mode === 'koding' ? `#${input}` : input)
+      onModeChange('prompt')
+      return
+    }
     if (input === '') {
       return
     }
@@ -281,7 +415,13 @@ function PromptInput({
       <Box
         alignItems="flex-start"
         justifyContent="flex-start"
-        borderColor={mode === 'bash' ? theme.bashBorder : theme.secondaryBorder}
+        borderColor={
+          mode === 'bash'
+            ? theme.bashBorder
+            : mode === 'koding'
+              ? theme.koding
+              : theme.secondaryBorder
+        }
         borderDimColor
         borderStyle="round"
         marginTop={1}
@@ -296,6 +436,8 @@ function PromptInput({
         >
           {mode === 'bash' ? (
             <Text color={theme.bashBorder}>&nbsp;!&nbsp;</Text>
+          ) : mode === 'koding' ? (
+            <Text color={theme.koding}>&nbsp;#&nbsp;</Text>
           ) : (
             <Text color={isLoading ? theme.secondaryText : undefined}>
               &nbsp;&gt;&nbsp;
@@ -345,6 +487,12 @@ function PromptInput({
                 >
                   ! for bash mode
                 </Text>
+                <Text
+                  color={mode === 'koding' ? theme.koding : undefined}
+                  dimColor={mode !== 'koding'}
+                >
+                  · # for KODING.md
+                </Text>
                 <Text dimColor>· / for commands · esc to undo</Text>
               </>
             )}
@@ -364,12 +512,7 @@ function PromptInput({
                 )}
               {debug && (
                 <Text dimColor>
-                  {`${countTokens(messages)} tokens (${
-                    Math.round(
-                      (10000 * (countCachedTokens(messages) || 1)) /
-                        (countTokens(messages) || 1),
-                    ) / 100
-                  }% cached)`}
+                  {`${countTokens(messages)} tokens (${Math.round((10000 * (countCachedTokens(messages) || 1)) / (countTokens(messages) || 1)) / 100}% cached)`}
                 </Text>
               )}
               <TokenWarning tokenUsage={tokenUsage} />

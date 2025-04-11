@@ -1,5 +1,6 @@
 import { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { UserBashInputMessage } from './UserBashInputMessage'
+import { UserKodingInputMessage } from './UserKodingInputMessage'
 import { UserCommandMessage } from './UserCommandMessage'
 import { UserPromptMessage } from './UserPromptMessage'
 import * as React from 'react'
@@ -13,6 +14,11 @@ type Props = {
 export function UserTextMessage({ addMargin, param }: Props): React.ReactNode {
   if (param.text.trim() === NO_CONTENT_MESSAGE) {
     return null
+  }
+
+  // Koding inputs!
+  if (param.text.includes('<koding-input>')) {
+    return <UserKodingInputMessage addMargin={addMargin} param={param} />
   }
 
   // Bash inputs!

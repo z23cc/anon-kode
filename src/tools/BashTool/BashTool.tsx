@@ -71,7 +71,7 @@ export const BashTool = {
     const config = getGlobalConfig()
     const modelName = config.largeModelName || '<Unknown Model>'
     // Substitute the placeholder in the static PROMPT string
-    return PROMPT.replace(/{MODEL_NAME}/g, modelName) 
+    return PROMPT.replace(/{MODEL_NAME}/g, modelName)
   },
   isReadOnly() {
     return false

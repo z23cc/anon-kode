@@ -37,6 +37,10 @@ export type UserMessage = {
   type: 'user'
   uuid: UUID
   toolUseResult?: FullToolUseResult
+  options?: {
+    isKodingRequest?: boolean
+    kodingContext?: string
+  }
 }
 
 export type AssistantMessage = {

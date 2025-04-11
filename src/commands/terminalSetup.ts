@@ -51,6 +51,52 @@ export function isShiftEnterKeyBindingInstalled(): boolean {
   return getGlobalConfig().shiftEnterKeyBindingInstalled === true
 }
 
+export function handleHashCommand(interpreted: string): void {
+  // Appends the AI-interpreted content to KODING.md
+  try {
+    const kodingPath = join(process.cwd(), 'KODING.md')
+
+    // Check if file exists, if not create it
+    let existingContent = ''
+    try {
+      existingContent = readFileSync(kodingPath, 'utf-8').trim()
+    } catch (error) {
+      // File doesn't exist yet, that's fine
+    }
+
+    // Add a separator if the file already has content
+    const separator = existingContent ? '\n\n' : ''
+
+    // Add a timestamp if the interpreted content doesn't include one
+    const now = new Date()
+    // Get timezone abbreviation (EDT, EST, etc.)
+    const timezoneMatch = now.toString().match(/\(([A-Z]+)\)/)
+    const timezone = timezoneMatch
+      ? timezoneMatch[1]
+      : now
+          .toLocaleTimeString('en-us', { timeZoneName: 'short' })
+          .split(' ')
+          .pop()
+
+    const timestamp = interpreted.includes(now.getFullYear().toString())
+      ? ''
+      : `\n\n_Added on ${now.toLocaleString()} ${timezone}_`
+
+    // Combine everything and write to file
+    const newContent = `${existingContent}${separator}${interpreted}${timestamp}`
+    writeFileSync(kodingPath, newContent, 'utf-8')
+
+    console.log(chalk.hex(getTheme().success)(`Added note to KODING.md`))
+  } catch (e) {
+    logError(e)
+    console.error(
+      chalk.hex(getTheme().error)(
+        `Failed to add note to KODING.md: ${e.message}`,
+      ),
+    )
+  }
+}
+
 export default terminalSetup
 
 async function installBindingsForITerm2(): Promise<string> {

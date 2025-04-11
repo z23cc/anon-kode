@@ -3,6 +3,7 @@ import { getGlobalConfig } from './config'
 export interface Theme {
   bashBorder: string
   claude: string
+  koding: string
   permission: string
   secondaryBorder: string
   text: string
@@ -23,6 +24,7 @@ export interface Theme {
 const lightTheme: Theme = {
   bashBorder: '#ff0087',
   claude: '#5f97cd',
+  koding: '#0000ff',
   permission: '#5769f7',
   secondaryBorder: '#999',
   text: '#000',
@@ -42,6 +44,7 @@ const lightTheme: Theme = {
 const lightDaltonizedTheme: Theme = {
   bashBorder: '#0066cc', // Blue instead of pink for better contrast
   claude: '#5f97cd', // Orange adjusted for deuteranopia
+  koding: '#0000ff',
   permission: '#3366ff', // Brighter blue for better visibility
   secondaryBorder: '#999',
   text: '#000',
@@ -61,6 +64,7 @@ const lightDaltonizedTheme: Theme = {
 const darkTheme: Theme = {
   bashBorder: '#fd5db1',
   claude: '#5f97cd',
+  koding: '#0000ff',
   permission: '#b1b9f9',
   secondaryBorder: '#888',
   text: '#fff',
@@ -80,6 +84,7 @@ const darkTheme: Theme = {
 const darkDaltonizedTheme: Theme = {
   bashBorder: '#3399ff', // Bright blue instead of pink
   claude: '#5f97cd', // Orange adjusted for deuteranopia
+  koding: '#0000ff',
   permission: '#99ccff', // Light blue for better contrast
   secondaryBorder: '#888',
   text: '#fff',
