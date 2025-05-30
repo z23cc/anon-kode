@@ -11,13 +11,13 @@
   "author": "Anon Kode <anon@kode.com>",
   "license": "",
   "description": "Use Anon Kode, Anon's AI assistant, right from your terminal. Anon Kode can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
-  "homepage": "https://github.com/dnakov/anon-kode",
+  "homepage": "https://github.com/ripgrim/anon-kode",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dnakov/anon-kode.git"
+    "url": "https://github.com/ripgrim/anon-kode.git"
   },
   "bugs": {
-    "url": "https://github.com/dnakov/anon-kode/issues"
+    "url": "https://github.com/ripgrim/anon-kode/issues"
   },
   "files": [
     "cli.mjs",
