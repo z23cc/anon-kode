@@ -354,16 +354,16 @@ export async function getCompletion(
   const config = getGlobalConfig()
   const failedKeys = getSessionState('failedApiKeys')[type]
   const availableKeys = getApiKeys(config, type)
-  
+
   const apiKeyRequired =
     type === 'large'
       ? config.largeModelApiKeyRequired
       : config.smallModelApiKeyRequired
-  
+
   // Only check for failed keys if API keys are required
   const allKeysFailed =
-    apiKeyRequired && 
-    failedKeys.length === availableKeys.length && 
+    apiKeyRequired &&
+    failedKeys.length === availableKeys.length &&
     availableKeys.length > 0
 
   if (attempt >= maxAttempts || allKeysFailed) {

@@ -1,7 +1,29 @@
 #!/usr/bin/env -S node --no-warnings=ExperimentalWarning --enable-source-maps
 import { initSentry } from '../services/sentry'
 import { PRODUCT_COMMAND, PRODUCT_NAME } from '../constants/product'
+import cfonts from 'cfonts'
 initSentry() // Initialize Sentry as early as possible
+
+// Display 3D logo at startup
+console.log('\n')
+const logoOutput = cfonts.render('SUPER', {
+  font: '3d',
+  align: 'left',
+  colors: ['cyan', 'gray'],
+  space: true,
+  maxLength: '0',
+  gradient: ['cyan', 'magenta'],
+  independentGradient: false,
+  transitionGradient: true,
+  env: 'node',
+})
+const logoLines = (logoOutput as any).string.split('\n')
+logoLines.forEach((line: string) => {
+  if (line.trim()) {
+    console.log('  ' + line)
+  }
+})
+console.log('\n')
 
 // XXX: Without this line (and the Object.keys, even though it seems like it does nothing!),
 // there is a bug in Bun only on Win32 that causes this import to be removed, even though

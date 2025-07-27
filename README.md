@@ -1,4 +1,4 @@
-# ANON KODE (preserved)
+# SUPER (preserved)
 ### Original repo: https://github.com/dnakov/anon-kode [DMCA]
 
 
@@ -17,7 +17,7 @@ Terminal-based AI coding tool that can use any model that supports the OpenAI-st
 ```
 npm install -g anon-kode
 cd your-project
-kode
+super
 ```
 
 You can use the onboarding to set up the model, or `/model`.
@@ -26,12 +26,12 @@ As long as you have an openai-like endpoint, it should work.
 
 ## USE AS MCP SERVER
 
-Find the full path to `kode` with `which kode` then add the config to Claude Desktop:
+Find the full path to `super` with `which super` then add the config to Claude Desktop:
 ```
 {
   "mcpServers": {
     "claude-code": {
-      "command": "/path/to/kode",
+      "command": "/path/to/super",
       "args": ["mcp", "serve"]
     }
   }

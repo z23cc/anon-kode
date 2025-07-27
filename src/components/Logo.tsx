@@ -1,4 +1,4 @@
-import { Box, Text, Newline } from 'ink'
+import { Box, Text } from 'ink'
 import * as React from 'react'
 import { getTheme } from '../utils/theme'
 import { PRODUCT_NAME } from '../constants/product'
@@ -8,14 +8,12 @@ import {
   getGlobalConfig,
 } from '../utils/config'
 import { getCwd } from '../utils/state'
-import { AsciiLogo } from './AsciiLogo'
 import type { WrappedClient } from '../services/mcpClient'
 
 export const MIN_LOGO_WIDTH = 50
 
 export function Logo({
   mcpClients,
-  isDefaultModel = false,
 }: {
   mcpClients: WrappedClient[]
   isDefaultModel?: boolean
@@ -38,101 +36,78 @@ export function Logo({
   )
 
   return (
-    <Box flexDirection="column">
-      <Box
-        borderColor={theme.claude}
-        borderStyle="round"
-        flexDirection="column"
-        gap={1}
-        paddingLeft={1}
-        width={width}
-      >
+    <Box flexDirection="column" paddingLeft={1} paddingTop={1}>
+      <Box flexDirection="column" gap={1}>
         <Text>
-          <Text color={theme.claude}>✻</Text> Welcome to{' '}
-          <Text bold>{PRODUCT_NAME}</Text> <Text>research preview!</Text>
+          <Text color="cyan" bold>
+            ⚡
+          </Text>{' '}
+          Welcome to{' '}
+          <Text bold color="cyan">
+            {PRODUCT_NAME}
+          </Text>
         </Text>
-        <AsciiLogo />
 
-        <>
-          <Box paddingLeft={2} flexDirection="column" gap={1}>
-            <Text color={theme.secondaryText} italic>
-              /help for help
+        <Box paddingLeft={1} flexDirection="column">
+          <Text color="gray">
+            Type <Text color="cyan">/help</Text> for help ·{' '}
+            <Text color="cyan">!</Text> for bash mode ·{' '}
+            <Text color="cyan">/</Text> for commands
+          </Text>
+          <Text color="gray" dimColor>
+            {getCwd()}
+          </Text>
+          {currentModel && (
+            <Text color="yellow">
+              <Text dimColor>Using</Text> {currentModel}
             </Text>
-            <Text color={theme.secondaryText}>cwd: {getCwd()}</Text>
-            {currentModel && (
-              <Text color={theme.secondaryText}>
-                Model: <Text bold>{currentModel}</Text>
-              </Text>
-            )}
-          </Box>
-
-          {hasOverrides && (
-            <Box
-              borderColor={theme.secondaryBorder}
-              borderStyle="single"
-              borderBottom={false}
-              borderLeft={false}
-              borderRight={false}
-              borderTop={true}
-              flexDirection="column"
-              marginLeft={2}
-              marginRight={1}
-              paddingTop={1}
-            >
-              <Box marginBottom={1}>
-                <Text color={theme.secondaryText}>Overrides (via env):</Text>
-              </Box>
-              {isCustomApiKey && apiKey ? (
-                <Text color={theme.secondaryText}>
-                  • API Key:{' '}
-                  <Text bold>sk-ant-…{apiKey!.slice(-width + 25)}</Text>
-                </Text>
-              ) : null}
-              {process.env.DISABLE_PROMPT_CACHING ? (
-                <Text color={theme.secondaryText}>
-                  • Prompt caching:{' '}
-                  <Text color={theme.error} bold>
-                    off
-                  </Text>
-                </Text>
-              ) : null}
-              {process.env.API_TIMEOUT_MS ? (
-                <Text color={theme.secondaryText}>
-                  • API timeout:{' '}
-                  <Text bold>{process.env.API_TIMEOUT_MS}ms</Text>
-                </Text>
-              ) : null}
-              {process.env.MAX_THINKING_TOKENS ? (
-                <Text color={theme.secondaryText}>
-                  • Max thinking tokens:{' '}
-                  <Text bold>{process.env.MAX_THINKING_TOKENS}</Text>
-                </Text>
-              ) : null}
-              {process.env.ANTHROPIC_BASE_URL ? (
-                <Text color={theme.secondaryText}>
-                  • API Base URL:{' '}
-                  <Text bold>{process.env.ANTHROPIC_BASE_URL}</Text>
-                </Text>
-              ) : null}
-            </Box>
           )}
-        </>
+        </Box>
+
+        {hasOverrides && (
+          <Box flexDirection="column" marginTop={1} paddingLeft={1}>
+            <Text color="gray" dimColor>
+              Environment overrides:
+            </Text>
+            {isCustomApiKey && apiKey ? (
+              <Text color={theme.secondaryText}>
+                • API Key:{' '}
+                <Text bold>sk-ant-…{apiKey!.slice(-width + 25)}</Text>
+              </Text>
+            ) : null}
+            {process.env.DISABLE_PROMPT_CACHING ? (
+              <Text color={theme.secondaryText}>
+                • Prompt caching:{' '}
+                <Text color={theme.error} bold>
+                  off
+                </Text>
+              </Text>
+            ) : null}
+            {process.env.API_TIMEOUT_MS ? (
+              <Text color={theme.secondaryText}>
+                • API timeout: <Text bold>{process.env.API_TIMEOUT_MS}ms</Text>
+              </Text>
+            ) : null}
+            {process.env.MAX_THINKING_TOKENS ? (
+              <Text color={theme.secondaryText}>
+                • Max thinking tokens:{' '}
+                <Text bold>{process.env.MAX_THINKING_TOKENS}</Text>
+              </Text>
+            ) : null}
+            {process.env.ANTHROPIC_BASE_URL ? (
+              <Text color={theme.secondaryText}>
+                • API Base URL:{' '}
+                <Text bold>{process.env.ANTHROPIC_BASE_URL}</Text>
+              </Text>
+            ) : null}
+          </Box>
+        )}
+
         {mcpClients.length ? (
-          <Box
-            borderColor={theme.secondaryBorder}
-            borderStyle="single"
-            borderBottom={false}
-            borderLeft={false}
-            borderRight={false}
-            borderTop={true}
-            flexDirection="column"
-            marginLeft={2}
-            marginRight={1}
-            paddingTop={1}
-          >
-            <Box marginBottom={1}>
-              <Text color={theme.secondaryText}>MCP Servers:</Text>
-            </Box>
+          <Box flexDirection="column" marginTop={1} paddingLeft={1}>
+            <Text color="gray" dimColor>
+              MCP Servers:
+            </Text>
             {mcpClients.map((client, idx) => (
               <Box key={idx} width={width - 6}>
                 <Text color={theme.secondaryText}>• {client.name}</Text>

@@ -2,7 +2,7 @@
   "name": "anon-kode",
   "version": "0.0.54",
   "bin": {
-    "kode": "cli.mjs"
+    "super": "cli.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -10,7 +10,7 @@
   "type": "module",
   "author": "Anon Kode <anon@kode.com>",
   "license": "",
-  "description": "Use Anon Kode, Anon's AI assistant, right from your terminal. Anon Kode can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
+  "description": "Use SUPER, the AI assistant, right from your terminal. SUPER can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
   "homepage": "https://github.com/ripgrim/anon-kode",
   "repository": {
     "type": "git",
@@ -48,6 +48,7 @@
     "@types/lodash-es": "^4.17.12",
     "@types/react": "^19.0.10",
     "ansi-escapes": "^7.0.0",
+    "cfonts": "^3.3.0",
     "chalk": "^4.1.2",
     "cli-highlight": "^2.1.11",
     "cli-table3": "^0.6.5",
