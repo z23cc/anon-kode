@@ -186,8 +186,11 @@ export function ModelSelector({
     },
   ]
 
-  // Get available providers from models.ts
-  const availableProviders = Object.keys(providers)
+  // Get available providers from models.ts with Big-Dream first
+  const allProviders = Object.keys(providers)
+  const availableProviders = allProviders.includes('big-dream') 
+    ? ['big-dream', ...allProviders.filter(p => p !== 'big-dream')]
+    : allProviders
 
   // Create provider options with nice labels
   const providerOptions = availableProviders.map(provider => {

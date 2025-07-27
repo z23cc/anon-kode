@@ -97,6 +97,7 @@ export type ProviderType =
   | 'ollama'
   | 'azure'
   | 'custom'
+  | 'big-dream'
 
 export type AccountInfo = {
   accountUuid: string
